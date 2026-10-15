@@ -6,8 +6,9 @@ VivariumIQ is a full-stack IoT remote monitoring and behavioral tracking system 
 
 ## System Architecture and Hardware
 
-* **Controller:** Raspberry Pi 400
-* **Sensor and Actuator Array:**
+**Controller:** Raspberry Pi 400
+
+**Sensor and Actuator Array:**
 * Temperature and humidity sensors for microclimate monitoring
 * Barometer for atmospheric pressure and seasonal trend analysis
 * GPS sensor for regional coordinate tracking and native hemisphere day-length calculations
@@ -15,10 +16,10 @@ VivariumIQ is a full-stack IoT remote monitoring and behavioral tracking system 
 * LED light and piezo buzzer for local visual and audible alerts
 
 
-* **Communication Protocol:** MQTTS, HTTPS for front-end webpages
-* **Backend and Frontend:** FastAPI, HTML templates with TailwindCSS styling
-* **Database:** MySQL
-* **Cloud Infrastructure:** Deployed on AWS
+**Communication Protocol:** MQTTS, HTTPS for front-end webpages
+**Backend and Frontend:** FastAPI, HTML templates with TailwindCSS styling
+**Database:** MySQL
+**Cloud Infrastructure:** Deployed on AWS
 
 ---
 
