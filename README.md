@@ -17,8 +17,11 @@ VivariumIQ is a full-stack IoT remote monitoring and behavioral tracking system 
 
 
 **Communication Protocol:** MQTTS, HTTPS for front-end webpages
+
 **Backend and Frontend:** FastAPI, HTML templates with TailwindCSS styling
+
 **Database:** MySQL
+
 **Cloud Infrastructure:** Deployed on AWS
 
 ---
