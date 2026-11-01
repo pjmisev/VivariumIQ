@@ -60,6 +60,23 @@ The backend interfaces with a relational MySQL database consisting of six primar
 
 ---
 
+## Database Backups
+
+The MySQL database is backed up automatically each day using a Bash script and cron on the Ubuntu AWS server.
+- Backup method: mysqldump, compressed using gzip.
+- Schedule: Daily at 00:00 UTC.
+- Storage: /home/ubuntu/db_backup/.
+- Retention: Backups older than six days are removed using find -mtime +6.
+- Security: Backup files have restricted permissions.
+Backup script: Database/backup_urcast.sh
+
+Cron configuration:
+0 0 * * * /bin/bash /home/ubuntu/scripts/backup_urcast.sh
+
+The script must be copied to /home/ubuntu/scripts/backup_urcast.sh before configuring cron. The backup directory must also exist. The cron entry is installed using sudo crontab -e.
+
+Testing: The scheduled backup was verified on 1 November 2026 at 00:00 UTC. The compressed backup was successfully restored into a temporary MySQL database, with all six tables present.
+
 ## Getting Started and Installation
 
 ### Prerequisites
