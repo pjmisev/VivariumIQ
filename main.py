@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models
 from database import Base, engine, get_db
 from auth import create_access_token, get_current_user, hash_password, verify_password
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, UserCreate, UserResponse, UserUpdate
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
 
@@ -141,6 +141,18 @@ def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user)
     db.commit()
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+def login(credentials: UserLogin, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.email == credentials.email))
+    user = result.scalars().first()
+    if not user or not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    return TokenResponse(access_token=create_access_token(user.user_id))
+
+@app.get("/api/auth/me", response_model=UserResponse)
+def get_me(current_user: Annotated[models.User, Depends(get_current_user)]):
+    return current_user
 
 @app.exception_handler(StarletteHTTPException)
 def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
