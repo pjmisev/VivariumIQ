@@ -294,16 +294,12 @@ def delete_reading(reading_id: int, db: Annotated[Session, Depends(get_db)]):
     db.commit()
 
 @app.get("/api/favourites", response_model=list[FavouriteResponse])
-def get_favourites(db: Annotated[Session, Depends(get_db)]):
+def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Favourite))
     return result.scalars().all()
 
 @app.get("/api/user/{user_id}/favourites", response_model=list[FavouriteResponse])
-def get_user_favourites(user_id: int,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.user_id == user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404,detail="User not found")
+def get_user_favourites(user_id: int, current_user: Annotated[models.User, Depends(require_self)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id))
     return result.scalars().all()
 
@@ -312,10 +308,7 @@ def get_user_favourites(user_id: int,db: Annotated[Session, Depends(get_db)]):
     response_model=FavouriteResponse,
     status_code=status.HTTP_201_CREATED
 )
-def create_favourite(user_id: int,favourite: FavouriteCreate,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.user_id == user_id))
-    if not result.scalars().first():
-        raise HTTPException(status_code=404, detail="User not found")
+def create_favourite(user_id: int,favourite: FavouriteCreate,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == favourite.node_id))
     if not result.scalars().first():
         raise HTTPException(status_code=404, detail="Node not found")
@@ -329,7 +322,7 @@ def create_favourite(user_id: int,favourite: FavouriteCreate,db: Annotated[Sessi
     return new_favourite
 
 @app.delete("/api/user/{user_id}/favourites/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_favourite(user_id: int,node_id: int,db: Annotated[Session, Depends(get_db)]):
+def delete_favourite(user_id: int,node_id: int,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id,models.Favourite.node_id == node_id))
     favourite = result.scalars().first()
     if not favourite:
