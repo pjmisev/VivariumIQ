@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
+from auth import create_access_token, get_current_user, hash_password, verify_password
 from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, UserCreate, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
@@ -88,7 +89,7 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.email == user.email))
     if result.scalars().first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
-    new_user = models.User(username=user.username, email=user.email, password_hash=user.password)
+    new_user = models.User(username=user.username, email=user.email, password_hash=hash_password(user.password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
