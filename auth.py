@@ -56,3 +56,15 @@ def get_current_user(
     if not user:
         raise credentials_error
     return user
+
+
+def require_self(
+    user_id: int,
+    current_user: Annotated[models.User, Depends(get_current_user)],
+) -> models.User:
+    if user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to manage another user's data",
+        )
+    return current_user
