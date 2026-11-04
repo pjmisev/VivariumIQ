@@ -140,7 +140,7 @@ class AlertBase(BaseModel):
 
 
 class AlertCreate(AlertBase):
-    user_id: int
+    pass
 
 
 class AlertUpdate(BaseModel):

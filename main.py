@@ -331,29 +331,28 @@ def delete_favourite(user_id: int,node_id: int,current_user: Annotated[models.Us
     db.commit()
 
 @app.get("/api/alerts", response_model=list[AlertResponse])
-def get_alerts(db: Annotated[Session, Depends(get_db)]):
+def get_alerts(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert))
     return result.scalars().all()
 
 @app.get("/api/alert/{alert_id}", response_model=AlertResponse)
-def get_alert(alert_id: int,db: Annotated[Session, Depends(get_db)]):
+def get_alert(alert_id: int,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert).where(models.Alert.alert_id == alert_id))
     alert = result.scalars().first()
     if not alert:
         raise HTTPException(status_code=404,detail="Alert not found")
+    if alert.user_id != current_user.user_id:
+        raise HTTPException(status_code=403,detail="Not allowed to view this alert")
     return alert
 
 @app.post(
     "/api/alert",response_model=AlertResponse,status_code=status.HTTP_201_CREATED)
-def create_alert(alert: AlertCreate,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.user_id == alert.user_id))
-    if not result.scalars().first():
-        raise HTTPException(status_code=404,detail="User not found")
+def create_alert(alert: AlertCreate,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == alert.node_id))
     if not result.scalars().first():
         raise HTTPException(status_code=404,detail="Node not found")
     new_alert = models.Alert(
-        user_id=alert.user_id,
+        user_id=current_user.user_id,
         node_id=alert.node_id,
         measurement_type=alert.measurement_type,
         comparison_operator=alert.comparison_operator,
@@ -366,11 +365,13 @@ def create_alert(alert: AlertCreate,db: Annotated[Session, Depends(get_db)]):
     return new_alert
 
 @app.patch("/api/alert/{alert_id}", response_model=AlertResponse)
-def update_alert(alert_id: int,alert: AlertUpdate,db: Annotated[Session, Depends(get_db)]):
+def update_alert(alert_id: int,alert: AlertUpdate,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert).where(models.Alert.alert_id == alert_id))
     existing_alert = result.scalars().first()
     if not existing_alert:
         raise HTTPException(status_code=404,detail="Alert not found")
+    if existing_alert.user_id != current_user.user_id:
+        raise HTTPException(status_code=403,detail="Not allowed to modify this alert")
     update_data = alert.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(existing_alert, field, value)
@@ -379,10 +380,12 @@ def update_alert(alert_id: int,alert: AlertUpdate,db: Annotated[Session, Depends
     return existing_alert
 
 @app.delete("/api/alert/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_alert(alert_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_alert(alert_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert).where(models.Alert.alert_id == alert_id))
     alert = result.scalars().first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+    if alert.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to modify this alert")
     db.delete(alert)
     db.commit()
