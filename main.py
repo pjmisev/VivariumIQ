@@ -11,7 +11,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, UserCreate, UserResponse, UserUpdate
+from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
 
@@ -33,12 +34,9 @@ def get_nodes(db: Annotated[Session, Depends(get_db)]):
 
 
 @app.post("/api/node", response_model=NodeResponse, status_code=status.HTTP_201_CREATED)
-def create_node(node: NodeCreate, db: Annotated[Session, Depends(get_db)]):
-    user = db.query(models.User).filter(models.User.user_id == node.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+def create_node(node: NodeCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     new_node = models.Node(
-        user_id=node.user_id,
+        user_id=current_user.user_id,
         node_name=node.node_name,
         latitude=node.latitude,
         longitude=node.longitude,
@@ -59,11 +57,13 @@ def get_node(node_id: int, db: Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
 
 @app.patch("/api/node/{node_id}", response_model=NodeResponse)
-def update_node(node_id: int,node: NodeUpdate,db: Annotated[Session, Depends(get_db)]):
+def update_node(node_id: int,node: NodeUpdate,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
     existing_node = result.scalars().first()
     if not existing_node:
         raise HTTPException(status_code=404,detail="Node not found")
+    if existing_node.user_id != current_user.user_id:
+        raise HTTPException(status_code=403,detail="Not allowed to modify this node")
     update_data = node.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(existing_node, field, value)
@@ -72,11 +72,13 @@ def update_node(node_id: int,node: NodeUpdate,db: Annotated[Session, Depends(get
     return existing_node
 
 @app.delete("/api/node/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_node(node_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_node(node_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
     node = result.scalars().first()
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to modify this node")
     db.delete(node)
     db.commit()
 
@@ -88,7 +90,7 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.email == user.email))
     if result.scalars().first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
-    new_user = models.User(username=user.username, email=user.email, password_hash=user.password)
+    new_user = models.User(username=user.username, email=user.email, password_hash=hash_password(user.password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -108,7 +110,7 @@ def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
 @app.patch("/api/user/{user_id}", response_model=UserResponse)
-def update_user(user_id: int,user: UserUpdate,db: Annotated[Session, Depends(get_db)]):
+def update_user(user_id: int,user: UserUpdate,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.user_id == user_id))
     existing_user = result.scalars().first()
     if not existing_user:
@@ -133,13 +135,25 @@ def update_user(user_id: int,user: UserUpdate,db: Annotated[Session, Depends(get
     return existing_user
 
 @app.delete("/api/user/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_user(user_id: int, current_user: Annotated[models.User, Depends(require_self)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.user_id == user_id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user)
     db.commit()
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+def login(credentials: UserLogin, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.User).where(models.User.email == credentials.email))
+    user = result.scalars().first()
+    if not user or not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    return TokenResponse(access_token=create_access_token(user.user_id))
+
+@app.get("/api/auth/me", response_model=UserResponse)
+def get_me(current_user: Annotated[models.User, Depends(get_current_user)]):
+    return current_user
 
 @app.exception_handler(StarletteHTTPException)
 def general_http_exception_handler(request: Request, exception: StarletteHTTPException):
@@ -280,16 +294,12 @@ def delete_reading(reading_id: int, db: Annotated[Session, Depends(get_db)]):
     db.commit()
 
 @app.get("/api/favourites", response_model=list[FavouriteResponse])
-def get_favourites(db: Annotated[Session, Depends(get_db)]):
+def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Favourite))
     return result.scalars().all()
 
 @app.get("/api/user/{user_id}/favourites", response_model=list[FavouriteResponse])
-def get_user_favourites(user_id: int,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.user_id == user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404,detail="User not found")
+def get_user_favourites(user_id: int, current_user: Annotated[models.User, Depends(require_self)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id))
     return result.scalars().all()
 
@@ -298,10 +308,7 @@ def get_user_favourites(user_id: int,db: Annotated[Session, Depends(get_db)]):
     response_model=FavouriteResponse,
     status_code=status.HTTP_201_CREATED
 )
-def create_favourite(user_id: int,favourite: FavouriteCreate,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.user_id == user_id))
-    if not result.scalars().first():
-        raise HTTPException(status_code=404, detail="User not found")
+def create_favourite(user_id: int,favourite: FavouriteCreate,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == favourite.node_id))
     if not result.scalars().first():
         raise HTTPException(status_code=404, detail="Node not found")
@@ -315,7 +322,7 @@ def create_favourite(user_id: int,favourite: FavouriteCreate,db: Annotated[Sessi
     return new_favourite
 
 @app.delete("/api/user/{user_id}/favourites/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_favourite(user_id: int,node_id: int,db: Annotated[Session, Depends(get_db)]):
+def delete_favourite(user_id: int,node_id: int,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id,models.Favourite.node_id == node_id))
     favourite = result.scalars().first()
     if not favourite:
@@ -324,29 +331,28 @@ def delete_favourite(user_id: int,node_id: int,db: Annotated[Session, Depends(ge
     db.commit()
 
 @app.get("/api/alerts", response_model=list[AlertResponse])
-def get_alerts(db: Annotated[Session, Depends(get_db)]):
+def get_alerts(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert))
     return result.scalars().all()
 
 @app.get("/api/alert/{alert_id}", response_model=AlertResponse)
-def get_alert(alert_id: int,db: Annotated[Session, Depends(get_db)]):
+def get_alert(alert_id: int,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert).where(models.Alert.alert_id == alert_id))
     alert = result.scalars().first()
     if not alert:
         raise HTTPException(status_code=404,detail="Alert not found")
+    if alert.user_id != current_user.user_id:
+        raise HTTPException(status_code=403,detail="Not allowed to view this alert")
     return alert
 
 @app.post(
     "/api/alert",response_model=AlertResponse,status_code=status.HTTP_201_CREATED)
-def create_alert(alert: AlertCreate,db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.User).where(models.User.user_id == alert.user_id))
-    if not result.scalars().first():
-        raise HTTPException(status_code=404,detail="User not found")
+def create_alert(alert: AlertCreate,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == alert.node_id))
     if not result.scalars().first():
         raise HTTPException(status_code=404,detail="Node not found")
     new_alert = models.Alert(
-        user_id=alert.user_id,
+        user_id=current_user.user_id,
         node_id=alert.node_id,
         measurement_type=alert.measurement_type,
         comparison_operator=alert.comparison_operator,
@@ -359,11 +365,13 @@ def create_alert(alert: AlertCreate,db: Annotated[Session, Depends(get_db)]):
     return new_alert
 
 @app.patch("/api/alert/{alert_id}", response_model=AlertResponse)
-def update_alert(alert_id: int,alert: AlertUpdate,db: Annotated[Session, Depends(get_db)]):
+def update_alert(alert_id: int,alert: AlertUpdate,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert).where(models.Alert.alert_id == alert_id))
     existing_alert = result.scalars().first()
     if not existing_alert:
         raise HTTPException(status_code=404,detail="Alert not found")
+    if existing_alert.user_id != current_user.user_id:
+        raise HTTPException(status_code=403,detail="Not allowed to modify this alert")
     update_data = alert.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(existing_alert, field, value)
@@ -372,10 +380,12 @@ def update_alert(alert_id: int,alert: AlertUpdate,db: Annotated[Session, Depends
     return existing_alert
 
 @app.delete("/api/alert/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_alert(alert_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_alert(alert_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Alert).where(models.Alert.alert_id == alert_id))
     alert = result.scalars().first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+    if alert.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to modify this alert")
     db.delete(alert)
     db.commit()

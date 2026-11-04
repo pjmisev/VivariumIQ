@@ -14,7 +14,7 @@ class UserBase(BaseModel):
     email: EmailStr = Field(max_length=255)
 
 class UserCreate(UserBase):
-    password: str = Field(min_length=8, max_length=255)
+    password: str = Field(min_length=8, max_length=72)
 
 class UserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=3, max_length=100)
@@ -27,6 +27,14 @@ class UserResponse(UserBase):
     role: str
     created_at: datetime
 
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
 
 # ---------- Node ----------
 
@@ -38,7 +46,7 @@ class NodeBase(BaseModel):
 
 
 class NodeCreate(NodeBase):
-    user_id: int
+    pass
 
 
 class NodeUpdate(BaseModel):
@@ -132,7 +140,7 @@ class AlertBase(BaseModel):
 
 
 class AlertCreate(AlertBase):
-    user_id: int
+    pass
 
 
 class AlertUpdate(BaseModel):
