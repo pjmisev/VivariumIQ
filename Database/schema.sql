@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS node (
     status VARCHAR(50) NOT NULL DEFAULT 'inactive',
     installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen DATETIME,
-    FOREIGN KEY (user_id) REFERENCES `user`(user_id)
+    FOREIGN KEY (user_id) REFERENCES `user`(user_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS weather_reading (
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS weather_reading (
     pressure DECIMAL(7,2),
     light_level DECIMAL(10,2),
     recorded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES node(node_id)
+    FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS node_diagnostic (
@@ -43,15 +43,15 @@ CREATE TABLE IF NOT EXISTS node_diagnostic (
     light_sensor_status BOOLEAN,
     gps_status BOOLEAN,
     recorded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES node(node_id)
+    FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS favourite (
     user_id INT NOT NULL,
     node_id INT NOT NULL,
     PRIMARY KEY (user_id, node_id),
-    FOREIGN KEY (user_id) REFERENCES `user`(user_id),
-    FOREIGN KEY (node_id) REFERENCES node(node_id)
+    FOREIGN KEY (user_id) REFERENCES `user`(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS alert (
@@ -63,6 +63,6 @@ CREATE TABLE IF NOT EXISTS alert (
     threshold_value DECIMAL(10,2) NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES `user`(user_id),
-    FOREIGN KEY (node_id) REFERENCES node(node_id)
+    FOREIGN KEY (user_id) REFERENCES `user`(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
 );

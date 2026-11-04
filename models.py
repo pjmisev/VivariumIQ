@@ -50,6 +50,23 @@ class WeatherReading(Base):
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
+class NodeDiagnostic(Base):
+    __tablename__ = "node_diagnostic"
+
+    diagnostic_id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=True)
+    node_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("node.node_id"), nullable=False)
+    uptime: Mapped[int | None] = mapped_column(Integer)
+    wifi_connected: Mapped[bool | None] = mapped_column(Boolean)
+    dht22_status: Mapped[bool | None] = mapped_column(Boolean)
+    pressure_sensor_status: Mapped[bool | None] = mapped_column(Boolean)
+    light_sensor_status: Mapped[bool | None] = mapped_column(Boolean)
+    gps_status: Mapped[bool | None] = mapped_column(Boolean)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"))
+
 class Favourite(Base):
     __tablename__ = "favourite"
     user_id: Mapped[int] = mapped_column(

@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Literal
 
 
 # ---------- User ----------
@@ -12,10 +13,12 @@ class UserBase(BaseModel):
     username: str = Field(min_length=3, max_length=100)
     email: EmailStr = Field(max_length=255)
 
-
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=255)
 
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=100)
+    email: EmailStr | None = Field(default=None, max_length=255)
 
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -67,6 +70,9 @@ class ReadingBase(BaseModel):
 class ReadingCreate(ReadingBase):
     node_id: int
 
+class ReadingUpdate(BaseModel):
+    pass
+
 
 class ReadingResponse(ReadingBase):
     model_config = ConfigDict(from_attributes=True)
@@ -89,6 +95,9 @@ class DiagnosticBase(BaseModel):
 
 class DiagnosticCreate(DiagnosticBase):
     node_id: int
+
+class DiagnosticUpdate(DiagnosticBase):
+    pass
 
 
 class DiagnosticResponse(DiagnosticBase):
@@ -116,8 +125,8 @@ class FavouriteResponse(BaseModel):
 
 class AlertBase(BaseModel):
     node_id: int
-    measurement_type: str = Field(min_length=1, max_length=50)
-    comparison_operator: str = Field(min_length=1, max_length=10)
+    measurement_type: Literal["temperature", "humidity", "pressure", "light_level"]
+    comparison_operator: Literal[">", "<", ">=", "<=", "=="]
     threshold_value: Decimal
     enabled: bool = True
 
@@ -127,8 +136,8 @@ class AlertCreate(AlertBase):
 
 
 class AlertUpdate(BaseModel):
-    measurement_type: str | None = Field(default=None, min_length=1, max_length=50)
-    comparison_operator: str | None = Field(default=None, min_length=1, max_length=10)
+    measurement_type: Literal["temperature", "humidity", "pressure", "light_level"] | None = None
+    comparison_operator: Literal[">", "<", ">=", "<=", "=="] | None = None
     threshold_value: Decimal | None = None
     enabled: bool | None = None
 
