@@ -193,6 +193,34 @@ def get_me(current_user: Annotated[models.User, Depends(get_current_user)]):
 
 The dependency decodes the token, loads the matching user from the database and passes it to the endpoint. If the token is missing, expired or fake, it raises a 401 instead.
 
+### Which endpoints need a token
+
+Weather data is public, so anyone can view nodes, readings and diagnostics without an account. Everything that changes data or belongs to a user needs a Bearer token:
+
+| Endpoints | Requirements |
+|---|---|
+| `POST /api/user` (register), `POST /api/auth/login` | public, no token |
+| `GET /api/nodes`, `GET /api/node/{node_id}` | public, no token |
+| `GET /api/readings`, `GET /api/reading/{reading_id}` | public, no token |
+| `GET /api/diagnostics`, `GET /api/diagnostics/{diagnostic_id}` | public, no token |
+| `GET /api/users`, `GET /api/user/{user_id}` | public, no token |
+| `GET /api/favourites`, `GET /api/alerts` | any logged in user |
+| `POST /api/node` | token, the node belongs to the logged in user |
+| `PATCH /api/node/{node_id}`, `DELETE /api/node/{node_id}` | token, only the owner of the node |
+| `GET`, `POST` and `DELETE` on `/api/user/{user_id}/favourites` | token, and `user_id` in the URL must match the token |
+| `POST /api/alert` | token, the alert belongs to the logged in user |
+| `GET /api/alert/{alert_id}`, `PATCH`, `DELETE` | token, only the owner of the alert |
+| `PATCH /api/user/{user_id}`, `DELETE /api/user/{user_id}` | token, only for your own account |
+
+Two different errors can come back:
+
+* **401** - no token was sent, or the token is invalid or expired.
+* **403** - the token is valid, but it belongs to another user, so you are not allowed to touch that data.
+
+Ownership is checked in two ways: endpoints under `/api/user/{user_id}/...` use the `require_self` dependency from `auth.py`, which compares the `user_id` in the URL with the one inside the token, and the node and alert endpoints compare the `user_id` stored on the record before updating or deleting.
+
+Note for the Android client: `POST /api/node` and `POST /api/alert` no longer take a `user_id` in the request body, the user is taken from the token instead.
+
 ---
 
 ## Testing
