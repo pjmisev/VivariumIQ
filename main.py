@@ -110,7 +110,7 @@ def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
 @app.patch("/api/user/{user_id}", response_model=UserResponse)
-def update_user(user_id: int,user: UserUpdate,db: Annotated[Session, Depends(get_db)]):
+def update_user(user_id: int,user: UserUpdate,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.user_id == user_id))
     existing_user = result.scalars().first()
     if not existing_user:
@@ -135,7 +135,7 @@ def update_user(user_id: int,user: UserUpdate,db: Annotated[Session, Depends(get
     return existing_user
 
 @app.delete("/api/user/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_user(user_id: int, current_user: Annotated[models.User, Depends(require_self)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.User).where(models.User.user_id == user_id))
     user = result.scalars().first()
     if not user:
