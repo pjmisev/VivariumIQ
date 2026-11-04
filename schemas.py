@@ -46,7 +46,7 @@ class NodeBase(BaseModel):
 
 
 class NodeCreate(NodeBase):
-    user_id: int
+    pass
 
 
 class NodeUpdate(BaseModel):

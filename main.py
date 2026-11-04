@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
-from auth import create_access_token, get_current_user, hash_password, verify_password
+from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
 from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
@@ -34,12 +34,9 @@ def get_nodes(db: Annotated[Session, Depends(get_db)]):
 
 
 @app.post("/api/node", response_model=NodeResponse, status_code=status.HTTP_201_CREATED)
-def create_node(node: NodeCreate, db: Annotated[Session, Depends(get_db)]):
-    user = db.query(models.User).filter(models.User.user_id == node.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+def create_node(node: NodeCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     new_node = models.Node(
-        user_id=node.user_id,
+        user_id=current_user.user_id,
         node_name=node.node_name,
         latitude=node.latitude,
         longitude=node.longitude,
@@ -60,11 +57,13 @@ def get_node(node_id: int, db: Annotated[Session, Depends(get_db)]):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
 
 @app.patch("/api/node/{node_id}", response_model=NodeResponse)
-def update_node(node_id: int,node: NodeUpdate,db: Annotated[Session, Depends(get_db)]):
+def update_node(node_id: int,node: NodeUpdate,current_user: Annotated[models.User, Depends(get_current_user)],db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
     existing_node = result.scalars().first()
     if not existing_node:
         raise HTTPException(status_code=404,detail="Node not found")
+    if existing_node.user_id != current_user.user_id:
+        raise HTTPException(status_code=403,detail="Not allowed to modify this node")
     update_data = node.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(existing_node, field, value)
@@ -73,11 +72,13 @@ def update_node(node_id: int,node: NodeUpdate,db: Annotated[Session, Depends(get
     return existing_node
 
 @app.delete("/api/node/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_node(node_id: int, db: Annotated[Session, Depends(get_db)]):
+def delete_node(node_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
     node = result.scalars().first()
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not allowed to modify this node")
     db.delete(node)
     db.commit()
 
