@@ -78,6 +78,9 @@ class ReadingBase(BaseModel):
 class ReadingCreate(ReadingBase):
     node_id: int
 
+class NodeReadingCreate(ReadingBase):
+    pass
+
 class ReadingUpdate(BaseModel):
     pass
 
@@ -103,6 +106,9 @@ class DiagnosticBase(BaseModel):
 
 class DiagnosticCreate(DiagnosticBase):
     node_id: int
+
+class NodeDiagnosticCreate(DiagnosticBase):
+    pass
 
 class DiagnosticUpdate(DiagnosticBase):
     pass

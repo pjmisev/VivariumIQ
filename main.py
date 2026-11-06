@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models
 from database import Base, engine, get_db
 from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
 
@@ -240,6 +240,28 @@ def delete_diagnostic(diagnostic_id: int, db: Annotated[Session, Depends(get_db)
     db.delete(diagnostic)
     db.commit()
 
+@app.post("/api/node/{node_id}/diagnostic", response_model=DiagnosticResponse, status_code=status.HTTP_201_CREATED)
+def ingest_node_diagnostic(node_id: int, diagnostic: NodeDiagnosticCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report diagnostics for this node")
+    new_diagnostic = models.NodeDiagnostic(
+        node_id=node_id,
+        uptime=diagnostic.uptime,
+        wifi_connected=diagnostic.wifi_connected,
+        dht22_status=diagnostic.dht22_status,
+        pressure_sensor_status=diagnostic.pressure_sensor_status,
+        light_sensor_status=diagnostic.light_sensor_status,
+        gps_status=diagnostic.gps_status,
+    )
+    db.add(new_diagnostic)
+    db.commit()
+    db.refresh(new_diagnostic)
+    return new_diagnostic
+
 @app.get("/api/readings", response_model=list[ReadingResponse])
 def get_readings(db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.WeatherReading))
@@ -292,6 +314,26 @@ def delete_reading(reading_id: int, db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(status_code=404, detail="Weather reading not found")
     db.delete(reading)
     db.commit()
+
+@app.post("/api/node/{node_id}/reading", response_model=ReadingResponse, status_code=status.HTTP_201_CREATED)
+def ingest_node_reading(node_id: int, reading: NodeReadingCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report readings for this node")
+    new_reading = models.WeatherReading(
+        node_id=node_id,
+        temperature=reading.temperature,
+        humidity=reading.humidity,
+        pressure=reading.pressure,
+        light_level=reading.light_level
+    )
+    db.add(new_reading)
+    db.commit()
+    db.refresh(new_reading)
+    return new_reading
 
 @app.get("/api/favourites", response_model=list[FavouriteResponse])
 def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
