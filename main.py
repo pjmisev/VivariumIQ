@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -248,6 +249,8 @@ def ingest_node_diagnostic(node_id: int, diagnostic: NodeDiagnosticCreate, curre
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
     if node.user_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report diagnostics for this node")
+    node.last_seen = datetime.now(timezone.utc)
+    node.status = "active"
     new_diagnostic = models.NodeDiagnostic(
         node_id=node_id,
         uptime=diagnostic.uptime,
@@ -323,6 +326,8 @@ def ingest_node_reading(node_id: int, reading: NodeReadingCreate, current_user: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
     if node.user_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report readings for this node")
+    node.last_seen = datetime.now(timezone.utc)
+    node.status = "active"
     new_reading = models.WeatherReading(
         node_id=node_id,
         temperature=reading.temperature,
@@ -334,6 +339,20 @@ def ingest_node_reading(node_id: int, reading: NodeReadingCreate, current_user: 
     db.commit()
     db.refresh(new_reading)
     return new_reading
+
+@app.post("/api/node/{node_id}/heartbeat", response_model=NodeResponse)
+def node_heartbeat(node_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to manage this node")
+    node.last_seen = datetime.now(timezone.utc)
+    node.status = "active"
+    db.commit()
+    db.refresh(node)
+    return node
 
 @app.get("/api/favourites", response_model=list[FavouriteResponse])
 def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
