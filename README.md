@@ -32,6 +32,7 @@ The urcast API acts as the central communication bridge between the outdoor Rasp
 * **Data Validation:** Incoming payloads and user inputs are strictly validated using Pydantic models to reject malformed or invalid readings before touching the database.
 * **Authentication and Authorization:** Passwords are hashed with bcrypt and login is handled with token-based authentication using JSON Web Tokens (JWT), ensuring only authorized contributors can manage their registered nodes.
 * **Database Isolation:** Direct database access is strictly restricted to authorized backend modules using SQLAlchemy ORM.
+* **MQTT Telemetry:** Sensor data travels over a Mosquitto MQTT broker. Every message payload must carry the node owner's JWT, so a node cannot publish readings for another user's node.
 
 ---
 
@@ -208,9 +209,11 @@ Weather data is public, so anyone can view nodes, readings and diagnostics witho
 | `POST /api/node` | token, the node belongs to the logged in user |
 | `PATCH /api/node/{node_id}`, `DELETE /api/node/{node_id}` | token, only the owner of the node |
 | `GET`, `POST` and `DELETE` on `/api/user/{user_id}/favourites` | token, and `user_id` in the URL must match the token |
+| `POST /api/node/{node_id}/reading` | token, only the owner of the node |
+| `POST /api/node/{node_id}/diagnostic` | token, only the owner of the node |
+| `POST /api/node/{node_id}/heartbeat` | token, only the owner of the node |
 | `POST /api/alert` | token, the alert belongs to the logged in user |
 | `GET /api/alert/{alert_id}`, `PATCH`, `DELETE` | token, only the owner of the alert |
-| `PATCH /api/user/{user_id}`, `DELETE /api/user/{user_id}` | token, only for your own account |
 
 Two different errors can come back:
 
@@ -220,6 +223,37 @@ Two different errors can come back:
 Ownership is checked in two ways: endpoints under `/api/user/{user_id}/...` use the `require_self` dependency from `auth.py`, which compares the `user_id` in the URL with the one inside the token, and the node and alert endpoints compare the `user_id` stored on the record before updating or deleting.
 
 Note for the Android client: `POST /api/node` and `POST /api/alert` no longer take a `user_id` in the request body, the user is taken from the token instead.
+
+---
+
+## Weather Nodes (MQTT)
+
+The Raspberry Pi nodes don't post their data through the REST api. They publish JSON messages to a Mosquitto broker, and the backend listens on the broker and stores everything. Node registration is the only step that goes through the REST api, and it needs a JWT token.
+
+### Topics
+
+| Topic | Payload | Stored as |
+|---|---|---|
+| `urcast/<node_id>/reading` | `temperature`, `humidity`, `pressure`, `light_level`, `token` | row in `weather_reading` |
+| `urcast/<node_id>/diagnostic` | sensor status flags, `token` | row in `node_diagnostic` |
+| `urcast/<node_id>/heartbeat` | `token` | updates node `status` and `last_seen` |
+
+Every payload must also contain the `token` field with the node owner's JWT. The backend checks that the token belongs to the user that registered the node, otherwise the message is ignored.
+
+### Setting up a node
+
+1. Register the node with a token (uses `POST /api/node`, so a valid JWT is required):
+```bash
+cd urcast-node-main/test
+python register_node.py
+```
+2. Put the returned node id and the JWT token into `mqtt_client.py`.
+3. Set `MQTT_BROKER` in `mqtt_client.py` to the server address and run the sensor loop:
+```bash
+python combinedTest.py
+```
+
+The broker runs in docker compose (`docker compose up mqtt`), or on a separate machine with `mosquitto -c mosquitto.conf`.
 
 ---
 
