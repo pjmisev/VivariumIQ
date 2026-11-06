@@ -296,12 +296,16 @@ curl -X POST http://<api-host>:8000/api/auth/login \
   -d '{"email": "pijus@example.com", "password": "S3curePass!"}'
 ```
 Copy the `access_token` from the response.
-3. **On the Raspberry Pi**, install the sensor libraries (see the urcast-node README), then set the token in both scripts inside `urcast-node-main/test`:
+3. **On the Raspberry Pi**, clone the node code from its own repo and install the sensor libraries (see the urcast-node README):
+```bash
+git clone https://github.com/urcast/urcast-node.git
+cd urcast-node/test
+```
+Then set the token in both scripts:
    * `register_node.py` - set `API_URL` and paste the token into `NODE_TOKEN`.
    * `mqtt_client.py` - set `MQTT_BROKER` to the broker address, paste the token into `NODE_TOKEN`.
 4. **Register the node** (uses `POST /api/node`, so a valid JWT is required):
 ```bash
-cd urcast-node-main/test
 python register_node.py
 ```
 It prints `node registered, id = <id>`. Put that id into `NODE_ID` in `mqtt_client.py`.
