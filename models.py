@@ -40,7 +40,7 @@ class Node(Base):
 class WeatherReading(Base):
     __tablename__ = "weather_reading"
     reading_id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True)
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     node_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("node.node_id"), nullable=False)
     temperature: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
@@ -54,7 +54,7 @@ class NodeDiagnostic(Base):
     __tablename__ = "node_diagnostic"
 
     diagnostic_id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True)
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     node_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("node.node_id"), nullable=False)
     uptime: Mapped[int | None] = mapped_column(Integer)
