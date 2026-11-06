@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -16,7 +19,15 @@ from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, D
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # the mqtt listener runs in its own thread so the api can keep serving requests
+    start_mqtt_listener()
+    yield
+    stop_mqtt_listener()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -239,6 +250,30 @@ def delete_diagnostic(diagnostic_id: int, db: Annotated[Session, Depends(get_db)
         raise HTTPException(status_code=404, detail="Diagnostic not found")
     db.delete(diagnostic)
     db.commit()
+
+@app.post("/api/node/{node_id}/diagnostic", response_model=DiagnosticResponse, status_code=status.HTTP_201_CREATED)
+def ingest_node_diagnostic(node_id: int, diagnostic: NodeDiagnosticCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report diagnostics for this node")
+    node.last_seen = datetime.now(timezone.utc)
+    node.status = "active"
+    new_diagnostic = models.NodeDiagnostic(
+        node_id=node_id,
+        uptime=diagnostic.uptime,
+        wifi_connected=diagnostic.wifi_connected,
+        dht22_status=diagnostic.dht22_status,
+        pressure_sensor_status=diagnostic.pressure_sensor_status,
+        light_sensor_status=diagnostic.light_sensor_status,
+        gps_status=diagnostic.gps_status,
+    )
+    db.add(new_diagnostic)
+    db.commit()
+    db.refresh(new_diagnostic)
+    return new_diagnostic
 
 @app.get("/api/readings", response_model=list[ReadingResponse])
 def get_readings(db: Annotated[Session, Depends(get_db)]):

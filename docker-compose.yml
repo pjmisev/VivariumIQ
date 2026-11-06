@@ -22,6 +22,7 @@ services:
     command: uv run fastapi dev main.py --host 0.0.0.0 --port 8000
     environment:
       DATABASE_URL: mysql+pymysql://urcast:urcast@db:3306/urcast_db
+      MQTT_BROKER: mqtt
     ports:
       - "8000:8000"
     volumes:
@@ -30,6 +31,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    command: mosquitto -c /mosquitto/config/mosquitto.conf
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
 volumes:
   urcast-db-data:

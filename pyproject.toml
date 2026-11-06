@@ -17,6 +17,7 @@ dependencies = [
     "pydantic[email]>=2.14.1",
     "bcrypt>=5.0.0",
     "pyjwt>=2.15.1",
+    "paho-mqtt>=2.2.0",
 ]
 
 [project.scripts]
@@ -25,3 +26,11 @@ urcast-api = "urcast_api:main"
 [build-system]
 requires = ["uv_build>=0.12.16,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
