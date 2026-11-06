@@ -8,15 +8,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
 from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
-from mqtt_listener import start_mqtt_listener, stop_mqtt_listener
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
 
@@ -329,41 +328,38 @@ def delete_reading(reading_id: int, db: Annotated[Session, Depends(get_db)]):
     db.delete(reading)
     db.commit()
 
-@app.post("/api/node/{node_id}/reading", response_model=ReadingResponse, status_code=status.HTTP_201_CREATED)
-def ingest_node_reading(node_id: int, reading: NodeReadingCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+@app.get("/api/nodes/{node_id}/summaries/hourly", response_model=list[HourlySummaryResponse])
+def get_hourly_summaries(node_id: int, db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
     node = result.scalars().first()
     if not node:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
-    if node.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report readings for this node")
-    node.last_seen = datetime.now(timezone.utc)
-    node.status = "active"
-    new_reading = models.WeatherReading(
-        node_id=node_id,
-        temperature=reading.temperature,
-        humidity=reading.humidity,
-        pressure=reading.pressure,
-        light_level=reading.light_level
-    )
-    db.add(new_reading)
-    db.commit()
-    db.refresh(new_reading)
-    return new_reading
+        raise HTTPException(status_code=404, detail="Node not found")
+    result = db.execute(select(models.HourlyWeatherSummary).where(models.HourlyWeatherSummary.node_id == node_id).order_by(models.HourlyWeatherSummary.hour_start.desc()))
+    return result.scalars().all()
 
-@app.post("/api/node/{node_id}/heartbeat", response_model=NodeResponse)
-def node_heartbeat(node_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+@app.get("/api/nodes/{node_id}/summaries/daily", response_model=list[DailySummaryResponse])
+def get_daily_summaries(node_id: int, db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
     node = result.scalars().first()
     if not node:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
-    if node.user_id != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to manage this node")
-    node.last_seen = datetime.now(timezone.utc)
-    node.status = "active"
-    db.commit()
-    db.refresh(node)
-    return node
+        raise HTTPException(status_code=404, detail="Node not found")
+    summary_date = func.date(models.HourlyWeatherSummary.hour_start)
+    result = db.execute(
+        select(
+            summary_date.label("date"),
+            (func.sum(models.HourlyWeatherSummary.avg_temperature * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_temperature"),
+            (func.sum(models.HourlyWeatherSummary.avg_humidity * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_humidity"),
+            (func.sum(models.HourlyWeatherSummary.avg_pressure * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_pressure"),
+            (func.sum(models.HourlyWeatherSummary.avg_light_level * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_light_level"),
+            func.min(models.HourlyWeatherSummary.min_temperature).label("min_temperature"),
+            func.max(models.HourlyWeatherSummary.max_temperature).label("max_temperature"),
+            func.sum(models.HourlyWeatherSummary.reading_count).label("reading_count")
+        )
+        .where(models.HourlyWeatherSummary.node_id == node_id)
+        .group_by(summary_date)
+        .order_by(summary_date.desc())
+    )
+    return result.mappings().all()
 
 @app.get("/api/favourites", response_model=list[FavouriteResponse])
 def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):

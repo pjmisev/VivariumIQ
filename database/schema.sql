@@ -33,6 +33,21 @@ CREATE TABLE IF NOT EXISTS weather_reading (
     FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS hourly_weather_summary (
+    summary_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    node_id INT NOT NULL,
+    hour_start DATETIME NOT NULL,
+    avg_temperature DECIMAL(5,2),
+    avg_humidity DECIMAL(5,2),
+    avg_pressure DECIMAL(7,2),
+    avg_light_level DECIMAL(10,2),
+    min_temperature DECIMAL(5,2),
+    max_temperature DECIMAL(5,2),
+    reading_count INT NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE,
+    UNIQUE (node_id, hour_start)
+);
+
 CREATE TABLE IF NOT EXISTS node_diagnostic (
     diagnostic_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     node_id INT NOT NULL,
