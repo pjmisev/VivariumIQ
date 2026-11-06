@@ -43,6 +43,7 @@ The urcast API acts as the central communication bridge between the outdoor Rasp
 * **Data Validation:** Pydantic
 * **ORM:** SQLAlchemy
 * **Database:** MySQL / MariaDB
+* **Telemetry:** MQTT (Mosquitto broker, paho-mqtt client)
 * **Testing:** Pytest and HTTPX
 * **Version Control:** Git and GitHub
 
@@ -228,7 +229,29 @@ Note for the Android client: `POST /api/node` and `POST /api/alert` no longer ta
 
 ## Weather Nodes (MQTT)
 
-The Raspberry Pi nodes don't post their data through the REST api. They publish JSON messages to a Mosquitto broker, and the backend listens on the broker and stores everything. Node registration is the only step that goes through the REST api, and it needs a JWT token.
+The Raspberry Pi nodes don't post their data through the REST api. They publish JSON messages to a Mosquitto MQTT broker, and the backend listens on the broker and stores everything. Node registration is the only step that goes through the REST api, and it needs a JWT token - a node can never be created or send data without one.
+
+### How it works
+
+```
+Raspberry Pi 5 (urcast-node)          Mosquitto broker           urcast API backend
+┌─────────────────────────┐          ┌──────────────┐          ┌────────────────────┐
+│ TSL2591 / DHT22 / BMP280 │          │              │          │  mqtt_listener.py  │
+│ combinedTest.py reads    │ ───────▶ │   urcast/    │ ───────▶ │  checks the JWT,   │
+│ sensors every 3 seconds  │  publish │  <node_id>/  │          │  stores readings,  │
+│ and publishes JSON       │          │   ...        │          │  diagnostics and   │
+└─────────────────────────┘          └──────────────┘          │  heartbeats in the │
+        │                                      ▲               │  database          │
+        │ 1. register_node.py uses the JWT                              └────────────────────┘
+        └────────── POST /api/node (HTTPS REST) ─────────────────────▶ create_node endpoint
+```
+
+The flow from a node's point of view:
+
+1. **Register** - `register_node.py` calls `POST /api/node` with the owner's JWT in the `Authorization` header. The api takes the user id from the token, not from the request body, so the node is always linked to the logged in user. Without a valid token the api returns `401 Invalid or expired token` and the node is not created.
+2. **Publish** - the sensor loop (`combinedTest.py`) reads the three sensors and publishes each sample to the broker on `urcast/<node_id>/reading`. Every payload includes a `token` field.
+3. **Verify + store** - `mqtt_listener.py` on the backend receives the message, decodes the JWT and checks that the token's user matches the user that registered the node. If it does, the reading is stored and the node is marked `active` with a fresh `last_seen`. If the token is missing, expired or belongs to someone else, the message is silently ignored and nothing is stored.
+4. **Heartbeat** - every 10th sample the node also publishes a diagnostic and a heartbeat so the backend can tell which sensors are alive and which nodes are still online.
 
 ### Topics
 
@@ -240,20 +263,75 @@ The Raspberry Pi nodes don't post their data through the REST api. They publish 
 
 Every payload must also contain the `token` field with the node owner's JWT. The backend checks that the token belongs to the user that registered the node, otherwise the message is ignored.
 
+Example reading payload (what `mqtt_client.py` publishes):
+
+```json
+{
+  "temperature": 21.5,
+  "humidity": 48.0,
+  "pressure": 1013.2,
+  "light_level": 540.0,
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+Any field except `token` can be `null` if that sensor failed its read - the api accepts partial readings, exactly like the printed terminal output shows `n/a`.
+
 ### Setting up a node
 
-1. Register the node with a token (uses `POST /api/node`, so a valid JWT is required):
+Full walkthrough from nothing to a node streaming data:
+
+1. **Start the backend stack** (database, api and broker):
+```bash
+docker compose up -d
+```
+2. **Create a user and log in** to get the JWT the node will use:
+```bash
+curl -X POST http://<api-host>:8000/api/user \
+  -H "Content-Type: application/json" \
+  -d '{"username": "pijus", "email": "pijus@example.com", "password": "S3curePass!"}'
+
+curl -X POST http://<api-host>:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "pijus@example.com", "password": "S3curePass!"}'
+```
+Copy the `access_token` from the response.
+3. **On the Raspberry Pi**, install the sensor libraries (see the urcast-node README), then set the token in both scripts inside `urcast-node-main/test`:
+   * `register_node.py` - set `API_URL` and paste the token into `NODE_TOKEN`.
+   * `mqtt_client.py` - set `MQTT_BROKER` to the broker address, paste the token into `NODE_TOKEN`.
+4. **Register the node** (uses `POST /api/node`, so a valid JWT is required):
 ```bash
 cd urcast-node-main/test
 python register_node.py
 ```
-2. Put the returned node id and the JWT token into `mqtt_client.py`.
-3. Set `MQTT_BROKER` in `mqtt_client.py` to the server address and run the sensor loop:
+It prints `node registered, id = <id>`. Put that id into `NODE_ID` in `mqtt_client.py`.
+5. **Run the sensor loop**:
 ```bash
 python combinedTest.py
 ```
+Every 3 seconds a sample is printed to the terminal and published to the broker; the api stores it and the node shows up as `active` at `GET /api/node/{node_id}`.
 
-The broker runs in docker compose (`docker compose up mqtt`), or on a separate machine with `mosquitto -c mosquitto.conf`.
+The broker runs in docker compose (`docker compose up mqtt`), or on a separate machine with `mosquitto -c mosquitto.conf`. The broker currently allows anonymous connections - anyone on the network can publish, which is why every message is still checked against the node owner's JWT by the backend.
+
+### What to watch out for
+
+* **Token expired** - tokens last 24 hours. If your node suddenly stops storing readings, the backend log will say `token is missing or wrong for node <id>`. Log in again and update `NODE_TOKEN` in `mqtt_client.py`.
+* **Node not registered** - messages for a node id that doesn't exist are ignored (`node <id> does not exist`). Run `register_node.py` first.
+* **Wrong node id** - make sure `NODE_ID` in `mqtt_client.py` matches the id returned by `register_node.py`, otherwise the api can't find the node.
+* **Broker unreachable** - if the Pi can't reach the broker, `mqtt_client.py` prints `could not send ... (no connection to broker)` and keeps the sensor loop running; data resumes once the broker is back.
+
+### Verifying it works
+
+```bash
+# watch the raw messages on the broker
+mosquitto_sub -h <broker-host> -t "urcast/#"
+
+# check the node went active
+curl http://<api-host>:8000/api/node/1
+
+# check the readings arrived
+curl http://<api-host>:8000/api/readings
+```
 
 ---
 
