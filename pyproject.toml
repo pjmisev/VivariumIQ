@@ -17,6 +17,7 @@ dependencies = [
     "pydantic[email]>=2.14.1",
     "bcrypt>=5.0.0",
     "pyjwt>=2.15.1",
+    "paho-mqtt>=2.2.0",
 ]
 
 [project.scripts]
