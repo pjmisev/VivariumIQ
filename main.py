@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -15,7 +14,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import models
 from database import Base, engine, get_db
 from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+from mqtt_listener import start_mqtt_listener, stop_mqtt_listener
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
 
@@ -274,6 +274,42 @@ def ingest_node_diagnostic(node_id: int, diagnostic: NodeDiagnosticCreate, curre
     db.commit()
     db.refresh(new_diagnostic)
     return new_diagnostic
+
+@app.post("/api/node/{node_id}/reading", response_model=ReadingResponse, status_code=status.HTTP_201_CREATED)
+def ingest_node_reading(node_id: int, reading: NodeReadingCreate, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to report readings for this node")
+    node.last_seen = datetime.now(timezone.utc)
+    node.status = "active"
+    new_reading = models.WeatherReading(
+        node_id=node_id,
+        temperature=reading.temperature,
+        humidity=reading.humidity,
+        pressure=reading.pressure,
+        light_level=reading.light_level
+    )
+    db.add(new_reading)
+    db.commit()
+    db.refresh(new_reading)
+    return new_reading
+
+@app.post("/api/node/{node_id}/heartbeat", response_model=NodeResponse)
+def node_heartbeat(node_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to manage this node")
+    node.last_seen = datetime.now(timezone.utc)
+    node.status = "active"
+    db.commit()
+    db.refresh(node)
+    return node
 
 @app.get("/api/readings", response_model=list[ReadingResponse])
 def get_readings(db: Annotated[Session, Depends(get_db)]):
