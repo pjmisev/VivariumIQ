@@ -5,14 +5,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
 from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 Base.metadata.create_all(bind=engine)
 
@@ -301,6 +301,30 @@ def get_hourly_summaries(node_id: int, db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(status_code=404, detail="Node not found")
     result = db.execute(select(models.HourlyWeatherSummary).where(models.HourlyWeatherSummary.node_id == node_id).order_by(models.HourlyWeatherSummary.hour_start.desc()))
     return result.scalars().all()
+
+@app.get("/api/nodes/{node_id}/summaries/daily", response_model=list[DailySummaryResponse])
+def get_daily_summaries(node_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    summary_date = func.date(models.HourlyWeatherSummary.hour_start)
+    result = db.execute(
+        select(
+            summary_date.label("date"),
+            (func.sum(models.HourlyWeatherSummary.avg_temperature * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_temperature"),
+            (func.sum(models.HourlyWeatherSummary.avg_humidity * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_humidity"),
+            (func.sum(models.HourlyWeatherSummary.avg_pressure * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_pressure"),
+            (func.sum(models.HourlyWeatherSummary.avg_light_level * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_light_level"),
+            func.min(models.HourlyWeatherSummary.min_temperature).label("min_temperature"),
+            func.max(models.HourlyWeatherSummary.max_temperature).label("max_temperature"),
+            func.sum(models.HourlyWeatherSummary.reading_count).label("reading_count")
+        )
+        .where(models.HourlyWeatherSummary.node_id == node_id)
+        .group_by(summary_date)
+        .order_by(summary_date.desc())
+    )
+    return result.mappings().all()
 
 @app.get("/api/favourites", response_model=list[FavouriteResponse])
 def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):

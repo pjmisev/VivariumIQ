@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -106,6 +106,17 @@ class HourlySummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ---------- Daily Summary ----------
+
+class DailySummaryResponse(BaseModel):
+    date: date
+    avg_temperature: Decimal | None
+    avg_humidity: Decimal | None
+    avg_pressure: Decimal | None
+    avg_light_level: Decimal | None
+    min_temperature: Decimal | None
+    max_temperature: Decimal | None
+    reading_count: int
 
 # ---------- Node Diagnostic ----------
 
