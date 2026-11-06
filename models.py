@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from decimal import Decimal
-from sqlalchemy import BigInteger, Boolean, DateTime, DECIMAL,ForeignKey, Integer, String, text
+from sqlalchemy import BigInteger, Boolean, DateTime, DECIMAL,ForeignKey, Integer, String, UniqueConstraint ,text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -49,6 +49,24 @@ class WeatherReading(Base):
     light_level: Mapped[Decimal | None] = mapped_column(DECIMAL(10, 2))
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+class HourlyWeatherSummary(Base):
+    __tablename__ = "hourly_weather_summary"
+    summary_id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=True)
+    node_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("node.node_id", ondelete="CASCADE"),
+        nullable=False)
+    hour_start: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False)
+    avg_temperature: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    avg_humidity: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    avg_pressure: Mapped[Decimal | None] = mapped_column(DECIMAL(7, 2))
+    avg_light_level: Mapped[Decimal | None] = mapped_column(DECIMAL(10, 2))
+    min_temperature: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    max_temperature: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    reading_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (UniqueConstraint("node_id", "hour_start"),)
 
 class NodeDiagnostic(Base):
     __tablename__ = "node_diagnostic"
