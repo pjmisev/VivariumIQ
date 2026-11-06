@@ -90,6 +90,23 @@ class ReadingResponse(ReadingBase):
     recorded_at: datetime
 
 
+# ---------- Hourly Summary ----------
+
+class HourlySummaryResponse(BaseModel):
+    summary_id: int
+    node_id: int
+    hour_start: datetime
+    avg_temperature: Decimal | None
+    avg_humidity: Decimal | None
+    avg_pressure: Decimal | None
+    avg_light_level: Decimal | None
+    min_temperature: Decimal | None
+    max_temperature: Decimal | None
+    reading_count: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+
 # ---------- Node Diagnostic ----------
 
 class DiagnosticBase(BaseModel):
