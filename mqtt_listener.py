@@ -26,6 +26,12 @@ from database import SessionLocal
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+# set MQTT_TLS=true to connect to the broker over TLS (port 8883 setup).
+# the broker uses a lets encrypt cert so the system CA store can verify it,
+# which means MQTT_BROKER has to be the real hostname (e.g. mqtt.pjmisev.com)
+# and not localhost, otherwise the certificate check fails.
+MQTT_TLS = os.getenv("MQTT_TLS", "").lower() == "true"
+MQTT_CA_FILE = os.getenv("MQTT_CA_FILE", "/etc/ssl/certs/ca-certificates.crt")
 
 _client = None
 
@@ -142,7 +148,10 @@ def on_message(client, userdata, msg):
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
         client.subscribe("urcast/#")
-        print(f"connected to mqtt broker {MQTT_BROKER}:{MQTT_PORT}, listening for node messages")
+        if MQTT_TLS:
+            print(f"connected to mqtt broker {MQTT_BROKER}:{MQTT_PORT} over tls, listening for node messages")
+        else:
+            print(f"connected to mqtt broker {MQTT_BROKER}:{MQTT_PORT}, listening for node messages")
     else:
         print(f"mqtt connection failed: {reason_code}")
 
@@ -152,6 +161,8 @@ def start_mqtt_listener():
     _client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     _client.on_connect = on_connect
     _client.on_message = on_message
+    if MQTT_TLS:
+        _client.tls_set(ca_certs=MQTT_CA_FILE)
     try:
         _client.connect(MQTT_BROKER, MQTT_PORT, 60)
     except OSError as error:
