@@ -317,12 +317,54 @@ Every 3 seconds a sample is printed to the terminal and published to the broker;
 
 The broker runs in docker compose (`docker compose up mqtt`), or on a separate machine with `mosquitto -c mosquitto.conf`. The broker currently allows anonymous connections - anyone on the network can publish, which is why every message is still checked against the node owner's JWT by the backend.
 
+### MQTT over TLS
+
+By default the broker listens on port 1883 in plain text, so the JWT in every payload travels over the network unencrypted. For the AWS deployment we add a second TLS listener on port 8883 using the Let's Encrypt cert the server already has, so the nodes can verify it with their normal system CA store and no custom certificates are needed.
+
+**On the server** (one-time setup):
+
+```bash
+# lets encrypt files are root only, copy them somewhere mosquitto can read
+sudo mkdir /etc/mosquitto/certs
+sudo cp /etc/letsencrypt/live/urcast.pjmisev.com/fullchain.pem /etc/mosquitto/certs/
+sudo cp /etc/letsencrypt/live/urcast.pjmisev.com/privkey.pem /etc/mosquitto/certs/
+sudo chown -R mosquitto:mosquitto /etc/mosquitto/certs
+
+# install the TLS listener config from this repo
+sudo cp mosquitto-tls.conf /etc/mosquitto/conf.d/urcast-tls.conf
+sudo systemctl restart mosquitto
+sudo ss -tlnp | grep 8883   # should show mosquitto listening on 0.0.0.0:8883
+```
+
+The cert gets renewed every ~90 days, so a deploy hook has to re-copy it and restart mosquitto after each renewal (see the comments at the top of `mosquitto-tls.conf`).
+
+Also open port **8883** in the AWS security group, same as was done for 80 and 1883.
+
+**On the backend** - set `MQTT_TLS=true` in `.env` (see `.env.example`). The listener then verifies the broker certificate against the system CA store. Note that `MQTT_BROKER` has to be the real hostname (`mqtt.pjmisev.com`), not `localhost` - the cert is issued for the hostname, so connecting to localhost would fail the certificate check. The listener log will say `connected to mqtt broker ... over tls` when it worked.
+
+**On the node** - the node-side repo gets the matching change (paho `tls_set()`, port 8883), check the urcast-node README.
+
+To confirm TLS is actually enforced, a plain connection to 8883 must fail while one with the CA file succeeds:
+
+```bash
+# should hang/fail the handshake - no CA given
+mosquitto_pub -h localhost -p 8883 -t "urcast/test/heartbeat" -m '{}'
+
+# should succeed
+mosquitto_pub -h localhost -p 8883 \
+  --cafile /etc/ssl/certs/ca-certificates.crt \
+  -t "urcast/test/heartbeat" -m '{}'
+```
+
+Port 1883 stays as a fallback for the backend listener on the same machine (that traffic never leaves the server, so plain text on loopback is fine). It can be removed later if everything moves to 8883.
+
 ### What to watch out for
 
 * **Token expired** - tokens last 24 hours. If your node suddenly stops storing readings, the backend log will say `token is missing or wrong for node <id>`. Log in again and update `NODE_TOKEN` in `mqtt_client.py`.
 * **Node not registered** - messages for a node id that doesn't exist are ignored (`node <id> does not exist`). Run `register_node.py` first.
 * **Wrong node id** - make sure `NODE_ID` in `mqtt_client.py` matches the id returned by `register_node.py`, otherwise the api can't find the node.
 * **Broker unreachable** - if the Pi can't reach the broker, `mqtt_client.py` prints `could not send ... (no connection to broker)` and keeps the sensor loop running; data resumes once the broker is back.
+* **TLS certificate errors** - if the backend or node prints a certificate verification error, the broker was probably restarted after a cert renewal with stale files in `/etc/mosquitto/certs`, or the connection is going to `localhost`/an IP instead of the hostname on the cert.
 
 ### Verifying it works
 
