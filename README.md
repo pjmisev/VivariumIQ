@@ -575,11 +575,3 @@ A complete video walkthrough covering the system architecture, security implemen
 - [Link to Screencast/Demo]
 
 ---
-
-## Team
-
-- **Pijus (PM)** - Back-End, Version Control
-- **Raivis** - Database, Back-End
-- **Anastasija** - Front-End, UI/UX/UD, Database
-- **Leonas** - Hardware, Front-End
-- **Kornel** - UI/UX/UD, Testing, Hardware
