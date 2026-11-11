@@ -14,6 +14,7 @@
 import json
 import os
 import threading
+import time
 from datetime import datetime, timezone
 
 import jwt
@@ -156,6 +157,20 @@ def on_connect(client, userdata, flags, reason_code, properties):
         print(f"mqtt connection failed: {reason_code}")
 
 
+def _connect_and_listen(client: mqtt.Client) -> None:
+    # in docker compose the api can start before the broker is accepting
+    # connections, so keep retrying instead of giving up on the first failure
+    while _client is client:
+        try:
+            client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        except OSError as error:
+            print(f"could not connect to mqtt broker: {error}, retrying in 5 seconds")
+            time.sleep(5)
+            continue
+        client.loop_forever()
+        return
+
+
 def start_mqtt_listener():
     global _client
     _client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -163,19 +178,14 @@ def start_mqtt_listener():
     _client.on_message = on_message
     if MQTT_TLS:
         _client.tls_set(ca_certs=MQTT_CA_FILE)
-    try:
-        _client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    except OSError as error:
-        print(f"could not connect to mqtt broker: {error}")
-        return
     # paho needs a loop running to handle the network traffic,
     # so we give it its own background thread
-    thread = threading.Thread(target=_client.loop_forever, daemon=True)
+    thread = threading.Thread(target=_connect_and_listen, args=(_client,), daemon=True)
     thread.start()
 
 
 def stop_mqtt_listener():
     global _client
     if _client is not None:
-        _client.disconnect()
-        _client = None
+        client, _client = _client, None
+        client.disconnect()

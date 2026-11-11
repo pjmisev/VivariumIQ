@@ -38,6 +38,11 @@ def home(request: Request):
     return templates.TemplateResponse(request, "home.html", {"title": "VivariumIQ"})
 
 
+@app.get("/health", include_in_schema=False)
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/api/nodes", response_model=list[NodeResponse])
 def get_nodes(db: Annotated[Session, Depends(get_db)]):
     result = db.execute(select(models.Node))
