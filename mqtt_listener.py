@@ -66,7 +66,7 @@ def store_reading(node_id: int, data: dict) -> None:
             temperature=data.get("temperature"),
             humidity=data.get("humidity"),
             pressure=data.get("pressure"),
-            light_level=data.get("light_level"),
+            motion_detected=data.get("motion_detected"),
         )
         mark_node_online(db, node)
         db.add(reading)
@@ -92,7 +92,7 @@ def store_diagnostic(node_id: int, data: dict) -> None:
             wifi_connected=data.get("wifi_connected"),
             dht22_status=data.get("dht22_status"),
             pressure_sensor_status=data.get("pressure_sensor_status"),
-            light_sensor_status=data.get("light_sensor_status"),
+            pir_status=data.get("pir_status"),
             gps_status=data.get("gps_status"),
         )
         mark_node_online(db, node)

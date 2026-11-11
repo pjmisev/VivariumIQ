@@ -35,7 +35,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", include_in_schema=False, name="home")
 def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {"title": "UrCast"})
+    return templates.TemplateResponse(request, "home.html", {"title": "VivariumIQ"})
 
 
 @app.get("/api/nodes", response_model=list[NodeResponse])
@@ -214,7 +214,7 @@ def create_diagnostic(diagnostic: DiagnosticCreate, db: Annotated[Session, Depen
         wifi_connected=diagnostic.wifi_connected,
         dht22_status=diagnostic.dht22_status,
         pressure_sensor_status=diagnostic.pressure_sensor_status,
-        light_sensor_status=diagnostic.light_sensor_status,
+        pir_status=diagnostic.pir_status,
         gps_status=diagnostic.gps_status,
     )
     db.add(new_diagnostic)
@@ -267,7 +267,7 @@ def ingest_node_diagnostic(node_id: int, diagnostic: NodeDiagnosticCreate, curre
         wifi_connected=diagnostic.wifi_connected,
         dht22_status=diagnostic.dht22_status,
         pressure_sensor_status=diagnostic.pressure_sensor_status,
-        light_sensor_status=diagnostic.light_sensor_status,
+        pir_status=diagnostic.pir_status,
         gps_status=diagnostic.gps_status,
     )
     db.add(new_diagnostic)
@@ -290,7 +290,7 @@ def ingest_node_reading(node_id: int, reading: NodeReadingCreate, current_user: 
         temperature=reading.temperature,
         humidity=reading.humidity,
         pressure=reading.pressure,
-        light_level=reading.light_level
+        motion_detected=reading.motion_detected
     )
     db.add(new_reading)
     db.commit()
@@ -335,7 +335,7 @@ def create_reading(reading: ReadingCreate, db: Annotated[Session, Depends(get_db
         temperature=reading.temperature,
         humidity=reading.humidity,
         pressure=reading.pressure,
-        light_level=reading.light_level
+        motion_detected=reading.motion_detected
     )
     db.add(new_reading)
     db.commit()
@@ -386,7 +386,7 @@ def get_daily_summaries(node_id: int, db: Annotated[Session, Depends(get_db)]):
             (func.sum(models.HourlyWeatherSummary.avg_temperature * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_temperature"),
             (func.sum(models.HourlyWeatherSummary.avg_humidity * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_humidity"),
             (func.sum(models.HourlyWeatherSummary.avg_pressure * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_pressure"),
-            (func.sum(models.HourlyWeatherSummary.avg_light_level * models.HourlyWeatherSummary.reading_count) / func.nullif(func.sum(models.HourlyWeatherSummary.reading_count), 0)).label("avg_light_level"),
+            func.coalesce(func.sum(models.HourlyWeatherSummary.motion_count), 0).label("motion_count"),
             func.min(models.HourlyWeatherSummary.min_temperature).label("min_temperature"),
             func.max(models.HourlyWeatherSummary.max_temperature).label("max_temperature"),
             func.sum(models.HourlyWeatherSummary.reading_count).label("reading_count")

@@ -72,7 +72,7 @@ class ReadingBase(BaseModel):
     temperature: Decimal | None = None
     humidity: Decimal | None = None
     pressure: Decimal | None = None
-    light_level: Decimal | None = None
+    motion_detected: bool | None = None
 
 
 class ReadingCreate(ReadingBase):
@@ -102,7 +102,7 @@ class HourlySummaryResponse(BaseModel):
     avg_temperature: Decimal | None
     avg_humidity: Decimal | None
     avg_pressure: Decimal | None
-    avg_light_level: Decimal | None
+    motion_count: int
     min_temperature: Decimal | None
     max_temperature: Decimal | None
     reading_count: int
@@ -116,7 +116,7 @@ class DailySummaryResponse(BaseModel):
     avg_temperature: Decimal | None
     avg_humidity: Decimal | None
     avg_pressure: Decimal | None
-    avg_light_level: Decimal | None
+    motion_count: int
     min_temperature: Decimal | None
     max_temperature: Decimal | None
     reading_count: int
@@ -128,7 +128,7 @@ class DiagnosticBase(BaseModel):
     wifi_connected: bool | None = None
     dht22_status: bool | None = None
     pressure_sensor_status: bool | None = None
-    light_sensor_status: bool | None = None
+    pir_status: bool | None = None
     gps_status: bool | None = None
 
 
@@ -167,7 +167,7 @@ class FavouriteResponse(BaseModel):
 
 class AlertBase(BaseModel):
     node_id: int
-    measurement_type: Literal["temperature", "humidity", "pressure", "light_level"]
+    measurement_type: Literal["temperature", "humidity", "pressure"]
     comparison_operator: Literal[">", "<", ">=", "<=", "=="]
     threshold_value: Decimal
     enabled: bool = True
@@ -178,7 +178,7 @@ class AlertCreate(AlertBase):
 
 
 class AlertUpdate(BaseModel):
-    measurement_type: Literal["temperature", "humidity", "pressure", "light_level"] | None = None
+    measurement_type: Literal["temperature", "humidity", "pressure"] | None = None
     comparison_operator: Literal[">", "<", ">=", "<=", "=="] | None = None
     threshold_value: Decimal | None = None
     enabled: bool | None = None

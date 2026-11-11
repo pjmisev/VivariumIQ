@@ -14,7 +14,7 @@ def calculate_hourly_summary():
                 func.avg(WeatherReading.temperature),
                 func.avg(WeatherReading.humidity),
                 func.avg(WeatherReading.pressure),
-                func.avg(WeatherReading.light_level),
+                func.coalesce(func.sum(WeatherReading.motion_detected), 0),
                 func.min(WeatherReading.temperature),
                 func.max(WeatherReading.temperature),
                 func.count(WeatherReading.reading_id),
@@ -45,7 +45,7 @@ def calculate_hourly_summary():
             summary.avg_temperature = result[1]
             summary.avg_humidity = result[2]
             summary.avg_pressure = result[3]
-            summary.avg_light_level = result[4]
+            summary.motion_count = result[4]
             summary.min_temperature = result[5]
             summary.max_temperature = result[6]
             summary.reading_count = result[7]

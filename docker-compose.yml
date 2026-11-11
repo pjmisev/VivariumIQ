@@ -2,15 +2,15 @@ services:
   db:
     image: mariadb:12
     environment:
-      MYSQL_DATABASE: urcast_db
-      MYSQL_USER: urcast
-      MYSQL_PASSWORD: urcast
+      MYSQL_DATABASE: vivariumiq_db
+      MYSQL_USER: vivariumiq
+      MYSQL_PASSWORD: vivariumiq
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3306:3306"
     volumes:
       - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-      - urcast-db-data:/var/lib/mysql
+      - vivariumiq-db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -21,7 +21,7 @@ services:
     build: .
     command: uv run fastapi dev main.py --host 0.0.0.0 --port 8000
     environment:
-      DATABASE_URL: mysql+pymysql://urcast:urcast@db:3306/urcast_db
+      DATABASE_URL: mysql+pymysql://vivariumiq:vivariumiq@db:3306/vivariumiq_db
       MQTT_BROKER: mqtt
     ports:
       - "8000:8000"
@@ -41,4 +41,4 @@ services:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
 volumes:
-  urcast-db-data:
+  vivariumiq-db-data:
