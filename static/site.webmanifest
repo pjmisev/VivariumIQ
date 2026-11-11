@@ -1,26 +1,26 @@
 {
-  "name": "UrCast",
-  "short_name": "UrCast",
-  "description": "Your weather node network API.",
+  "name": "VivariumIQ",
+  "short_name": "VivariumIQ",
+  "description": "Your remote monitoring and behavioral tracking system designed for exotic pet enclosures.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#527c9f",
   "icons": [
     {
-      "src": "/static/icons/urcast_logo_dark_192.png",
+      "src": "/static/icons/vivariumiq_logo_dark_192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/icons/urcast_logo_dark_512.png",
+      "src": "/static/icons/vivariumiq_logo_dark_512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/icons/urcast_logo_dark.svg",
+      "src": "/static/icons/vivariumiq_logo_dark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

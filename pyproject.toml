@@ -2,7 +2,7 @@
 package = false
 
 [project]
-name = "urcast-api"
+name = "vivariumiq-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-urcast-api = "urcast_api:main"
+vivariumiq-api = "vivariumiq_api:main"
 
 [build-system]
 requires = ["uv_build>=0.12.16,<0.13.0"]

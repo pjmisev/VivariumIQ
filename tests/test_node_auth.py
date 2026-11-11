@@ -95,7 +95,7 @@ def test_ingest_reading_with_token(client):
     node_id = response.json()["node_id"]
     response = client.post(
         f"/api/node/{node_id}/reading",
-        json={"temperature": 21.5, "humidity": 48.0, "pressure": 1013.2, "light_level": 540.0},
+        json={"temperature": 21.5, "humidity": 48.0, "pressure": 1013.2, "motion_detected": True},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 201
