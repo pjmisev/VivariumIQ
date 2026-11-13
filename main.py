@@ -35,7 +35,62 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", include_in_schema=False, name="home")
 def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {"title": "VivariumIQ"})
+    return templates.TemplateResponse(request, "landing.html", {"title": "Enclosure intelligence"})
+
+
+@app.get("/login", include_in_schema=False, name="login")
+def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"title": "Welcome back"})
+
+
+@app.get("/register", include_in_schema=False, name="register")
+def register_page(request: Request):
+    return templates.TemplateResponse(request, "register.html", {"title": "Create your account"})
+
+
+@app.get("/app", include_in_schema=False, name="dashboard")
+def dashboard_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {"title": "Overview", "page": "dashboard", "active": "dashboard"},
+    )
+
+
+@app.get("/app/nodes", include_in_schema=False, name="nodes")
+def nodes_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "nodes.html",
+        {"title": "Enclosures", "page": "nodes", "active": "nodes"},
+    )
+
+
+@app.get("/app/nodes/{node_id}", include_in_schema=False, name="node_detail")
+def node_detail_page(request: Request, node_id: int):
+    return templates.TemplateResponse(
+        request,
+        "node_detail.html",
+        {"title": "Enclosure", "page": "node-detail", "active": "nodes", "node_id": node_id},
+    )
+
+
+@app.get("/app/alerts", include_in_schema=False, name="alerts")
+def alerts_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "alerts.html",
+        {"title": "Alerts", "page": "alerts", "active": "alerts"},
+    )
+
+
+@app.get("/app/profile", include_in_schema=False, name="profile")
+def profile_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "profile.html",
+        {"title": "Profile", "page": "profile", "active": "profile"},
+    )
 
 
 @app.get("/api/nodes", response_model=list[NodeResponse])
