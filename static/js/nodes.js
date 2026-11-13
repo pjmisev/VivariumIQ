@@ -6,14 +6,11 @@
     nodes: [],
     grouped: new Map(),
     diagnostics: new Map(),
-    favourites: new Set(),
     query: "",
     filter: "all",
     loading: false,
   };
 
-  const STAR_OUTLINE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>';
-  const STAR_FILLED = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd"/></svg>';
 
   function metric(value, unit, digits) {
     if (value === null || value === undefined || value === "") return "—";
@@ -136,7 +133,6 @@
         const health = diagnosticHealth(diagnostic);
         const live = isLive(node);
         const status = API.statusMeta(live ? "active" : "inactive");
-        const favourite = state.favourites.has(node.node_id);
         const targetState = API.evaluateTargets(node.targets, latest);
         const targetLabel = !targetState.configured
           ? "No targets"
@@ -153,7 +149,7 @@
         return `
           <article class="card card-lift relative overflow-hidden border-l-4 bg-base-100 ${targetAccent}">
             <a href="/app/nodes/${node.node_id}" class="block p-5">
-              <div class="flex items-start justify-between gap-3 pr-10">
+              <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] ${live ? "text-success" : "text-warning"}">
                     <span class="status-dot ${live ? "is-live" : ""}"></span>
@@ -197,39 +193,9 @@
                 <span class="text-[10px] text-base-content/40">Seen ${API.timeAgo(node.last_seen)}</span>
               </div>
             </a>
-            <button type="button" class="btn btn-ghost btn-circle btn-xs absolute right-3 top-3 z-10 ${favourite ? "text-secondary" : "text-base-content/35"}" data-favourite-node="${node.node_id}" aria-label="${favourite ? "Remove from favourites" : "Add to favourites"}" aria-pressed="${favourite}">
-              ${favourite ? STAR_FILLED : STAR_OUTLINE}
-            </button>
           </article>`;
       })
       .join("");
-
-    container.querySelectorAll("[data-favourite-node]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        toggleFavourite(Number(button.getAttribute("data-favourite-node")), button);
-      });
-    });
-  }
-
-  async function toggleFavourite(nodeId, button) {
-    if (!state.user) return;
-    button.disabled = true;
-    const isFavourite = state.favourites.has(nodeId);
-    try {
-      if (isFavourite) {
-        await API.request(`/api/user/${state.user.user_id}/favourites/${nodeId}`, { method: "DELETE" });
-        state.favourites.delete(nodeId);
-      } else {
-        await API.request(`/api/user/${state.user.user_id}/favourites`, { method: "POST", body: { node_id: nodeId } });
-        state.favourites.add(nodeId);
-      }
-      render();
-      API.toast(isFavourite ? "Removed from favourites." : "Pinned to favourites.", isFavourite ? "info" : "success");
-    } catch (error) {
-      API.toast(error.message || "Could not update favourites.", "error");
-      button.disabled = false;
-    }
   }
 
   async function load() {
@@ -238,10 +204,9 @@
     const refreshButton = document.querySelector("[data-refresh]");
     if (refreshButton) API.setButtonLoading(refreshButton, true, "Refreshing…");
     try {
-      const [allNodes, allReadings, favourites, diagnostics] = await Promise.all([
+      const [allNodes, allReadings, diagnostics] = await Promise.all([
         API.request("/api/nodes"),
         API.request(`/api/readings?user_id=${state.user.user_id}&limit=5000`),
-        API.request(`/api/user/${state.user.user_id}/favourites`),
         API.request(`/api/diagnostics?user_id=${state.user.user_id}&limit=500`),
       ]);
       state.nodes = allNodes
@@ -249,7 +214,6 @@
         .sort((a, b) => a.node_name.localeCompare(b.node_name));
       const nodeIds = new Set(state.nodes.map((node) => node.node_id));
       state.grouped = groupReadings(allReadings.filter((reading) => nodeIds.has(reading.node_id)));
-      state.favourites = new Set(favourites.map((favourite) => favourite.node_id));
       state.diagnostics = new Map();
       diagnostics
         .filter((diagnostic) => nodeIds.has(diagnostic.node_id))

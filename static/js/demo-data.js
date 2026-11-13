@@ -120,7 +120,6 @@
         Array.isArray(state.readings) &&
         Array.isArray(state.diagnostics) &&
         Array.isArray(state.alerts) &&
-        Array.isArray(state.favourites) &&
         state.counters
     );
   }
@@ -181,10 +180,6 @@
         { alert_id: 2, user_id: DEMO_USER_ID, node_id: 2, measurement_type: "temperature", comparison_operator: ">", threshold_value: 34, enabled: true, created_at: iso(now - 15 * DAY) },
         { alert_id: 3, user_id: DEMO_USER_ID, node_id: 1, measurement_type: "temperature", comparison_operator: ">", threshold_value: 28, enabled: false, created_at: iso(now - 9 * DAY) },
         { alert_id: 4, user_id: DEMO_USER_ID, node_id: 3, measurement_type: "temperature", comparison_operator: "<", threshold_value: 23, enabled: true, created_at: iso(now - 3 * DAY) },
-      ],
-      favourites: [
-        { user_id: DEMO_USER_ID, node_id: 1 },
-        { user_id: DEMO_USER_ID, node_id: 2 },
       ],
       counters: { node_id: 3, reading_id: 0, diagnostic_id: 0, alert_id: 4 },
     };
@@ -434,7 +429,6 @@
           state.readings = state.readings.filter((item) => item.node_id !== nodeId);
           state.diagnostics = state.diagnostics.filter((item) => item.node_id !== nodeId);
           state.alerts = state.alerts.filter((item) => item.node_id !== nodeId);
-          state.favourites = state.favourites.filter((item) => item.node_id !== nodeId);
           saveState(state);
           return null;
         }
@@ -522,28 +516,6 @@
           return clone(state.user);
         }
         if (method === "DELETE") return null;
-      }
-      if (length === 4 && segments[3] === "favourites") {
-        requireDemoUser(segments[2]);
-        if (method === "GET") {
-          return clone(state.favourites.filter((favourite) => favourite.user_id === DEMO_USER_ID));
-        }
-        if (method === "POST") {
-          const nodeId = body.node_id;
-          const exists = state.favourites.some((favourite) => favourite.node_id === nodeId);
-          if (!exists) {
-            state.favourites.push({ user_id: DEMO_USER_ID, node_id: nodeId });
-            saveState(state);
-          }
-          return clone({ user_id: DEMO_USER_ID, node_id: nodeId });
-        }
-      }
-      if (length === 5 && segments[3] === "favourites" && method === "DELETE") {
-        requireDemoUser(segments[2]);
-        const nodeId = Number(segments[4]);
-        state.favourites = state.favourites.filter((favourite) => favourite.node_id !== nodeId);
-        saveState(state);
-        return null;
       }
       throw unavailable();
     }

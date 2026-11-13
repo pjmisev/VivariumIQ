@@ -60,7 +60,7 @@ This repository contains the backend API, the MQTT ingestion service and the web
 - **Bidirectional Actuator Control:** Remotely trigger the local warning LED or piezo buzzer on the Raspberry Pi from the cloud dashboard via MQTT commands.
 - **Telemetry Ingestion:** Raw sensor samples, sensor health diagnostics and heartbeats are received over MQTT and stored per enclosure node.
 - **Historical Trends:** Hourly aggregates and daily rollups of temperature, humidity, pressure and motion counts, exposed through dedicated REST endpoints.
-- **User Accounts and Alerts:** JWT-based authentication, saved favourite nodes and user-defined threshold alerts per measurement.
+- **User Accounts and Alerts:** JWT-based authentication and user-defined threshold alerts per measurement.
 
 ---
 
@@ -83,7 +83,7 @@ Raspberry Pi 400 (enclosure node)        Mosquitto broker          VivariumIQ AP
 2. **Publish** - the sensor loop reads the hardware and publishes each sample to `urcast/<node_id>/reading`, including the owner's JWT in the payload.
 3. **Verify and store** - `mqtt_listener.py` decodes the token, checks that it belongs to the user that registered the node, stores the reading and marks the node `active` with a fresh `last_seen`. Messages with a missing, expired or foreign token are silently ignored.
 4. **Summarize** - a scheduled job aggregates raw readings into hourly summaries, and the API rolls those up into daily figures on request.
-5. **Serve** - the REST API and web dashboard expose live status, historical trends, diagnostics, favourites and alerts.
+5. **Serve** - the REST API and web dashboard expose live status, historical trends, diagnostics and alerts.
 
 > The MQTT topic prefix and several internal identifiers still use the original `urcast` name for compatibility with nodes already deployed. The product and database are VivariumIQ.
 
@@ -98,7 +98,7 @@ The web interface is server-rendered with Jinja2 and progressively enhanced with
 | `/` | Public landing page with product overview and calls to action |
 | `/login`, `/register` | Account access screens with inline validation and password strength feedback |
 | `/app` | Authenticated overview: health banner, stats, 24-hour chart, enclosure cards, alerts and activity |
-| `/app/nodes` | Searchable enclosure list, status filters, favourite toggles and node registration |
+| `/app/nodes` | Searchable enclosure list, status filters, target health and node registration |
 | `/app/nodes/{id}` | Per-node telemetry, hourly/daily history, diagnostics, edit/delete and node alerts |
 | `/app/alerts` | Create, edit, pause and delete threshold alerts |
 | `/app/profile` | Account settings, sign out and account deletion |
@@ -182,7 +182,6 @@ The backend uses a relational schema with seven tables:
 | `weather_reading` | Raw time-series samples (temperature, humidity, pressure, motion detection) linked to a node. |
 | `hourly_weather_summary` | Per-node hourly averages, motion count, temperature min/max and reading count, unique per node and hour. |
 | `node_diagnostic` | Hardware health: uptime, Wi-Fi state and flags for the DHT22, pressure, PIR and GPS sensors. |
-| `favourite` | Junction table of user/node pairs used to pin preferred enclosures. |
 | `alert` | User-defined thresholds (`>`, `<`, `>=`, `<=`, `==`) on a measurement for a node. |
 
 The full DDL is in `database/schema.sql`. Tables are also created automatically by SQLAlchemy on startup (`Base.metadata.create_all`). Because `create_all` does not alter existing tables, databases created before the PIR switch need a manual migration:
@@ -381,9 +380,7 @@ Weather data is public. Anything that creates or changes user-owned data require
 | `POST /api/node/{node_id}/reading` | Token; node owner only |
 | `POST /api/node/{node_id}/diagnostic` | Token; node owner only |
 | `POST /api/node/{node_id}/heartbeat` | Token; node owner only |
-| `GET /api/user/{user_id}/favourites` | Token; `user_id` must match the token |
-| `POST /api/user/{user_id}/favourites`, `DELETE /api/user/{user_id}/favourites/{node_id}` | Token; `user_id` must match the token |
-| `GET /api/favourites`, `GET /api/alerts` | Any logged-in user |
+| `GET /api/alerts` | Any logged-in user |
 | `POST /api/alert` | Token; the alert is owned by the logged-in user |
 | `GET /api/alert/{alert_id}`, `PATCH`, `DELETE` | Token; alert owner only |
 
@@ -578,11 +575,11 @@ Implemented in this repository:
 - Enclosure node registration and management
 - MQTT ingestion for readings, diagnostics and heartbeats, with TLS support
 - Hourly aggregation and daily summary endpoints
-- Favourite nodes and threshold alert CRUD
+- Threshold alert CRUD
 - Web landing page, login/register screens and responsive app shell
 - Dashboard with health banner, microclimate chart, enclosure cards, alerts and recent activity
 - Enclosure list and per-node views for telemetry, hourly/daily history, diagnostics and alert management
-- Favourite toggles, profile settings and account deletion
+- Profile settings and account deletion
 - Light and dark themes plus HTML error pages
 - Daily database backups
 

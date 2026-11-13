@@ -18,7 +18,7 @@ from database import Base, engine, get_db
 from auth import create_access_token, create_demo_token, is_demo_token, get_current_user, hash_password, require_self, verify_password, DEMO_COOKIE_NAME, DEMO_TOKEN_EXPIRE_HOURS
 from mqtt_listener import start_mqtt_listener, stop_mqtt_listener
 from species_presets import PRESETS_BY_KEY, SPECIES_PRESETS, get_preset_groups
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeTargetsInput, NodeTargetsResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, SpeciesPresetResponse, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse, HourlySummaryResponse,NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeTargetsInput, NodeTargetsResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, SpeciesPresetResponse, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
 
 TARGET_RANGE_FIELDS = (
     "temperature_min", "temperature_max",
@@ -608,43 +608,6 @@ def get_daily_summaries(node_id: int, db: Annotated[Session, Depends(get_db)]):
         .order_by(summary_date.desc())
     )
     return result.mappings().all()
-
-@app.get("/api/favourites", response_model=list[FavouriteResponse])
-def get_favourites(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Favourite))
-    return result.scalars().all()
-
-@app.get("/api/user/{user_id}/favourites", response_model=list[FavouriteResponse])
-def get_user_favourites(user_id: int, current_user: Annotated[models.User, Depends(require_self)], db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id))
-    return result.scalars().all()
-
-@app.post(
-    "/api/user/{user_id}/favourites",
-    response_model=FavouriteResponse,
-    status_code=status.HTTP_201_CREATED
-)
-def create_favourite(user_id: int,favourite: FavouriteCreate,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Node).where(models.Node.node_id == favourite.node_id))
-    if not result.scalars().first():
-        raise HTTPException(status_code=404, detail="Node not found")
-    result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id,models.Favourite.node_id == favourite.node_id))
-    if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Favourite already exists")
-    new_favourite = models.Favourite(user_id=user_id,node_id=favourite.node_id)
-    db.add(new_favourite)
-    db.commit()
-    db.refresh(new_favourite)
-    return new_favourite
-
-@app.delete("/api/user/{user_id}/favourites/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_favourite(user_id: int,node_id: int,current_user: Annotated[models.User, Depends(require_self)],db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.Favourite).where(models.Favourite.user_id == user_id,models.Favourite.node_id == node_id))
-    favourite = result.scalars().first()
-    if not favourite:
-        raise HTTPException(status_code=404, detail="Favourite not found")
-    db.delete(favourite)
-    db.commit()
 
 @app.get("/api/alerts", response_model=list[AlertResponse])
 def get_alerts(current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):

@@ -205,19 +205,6 @@ class DiagnosticResponse(DiagnosticBase):
     recorded_at: datetime
 
 
-# ---------- Favourite ----------
-
-class FavouriteCreate(BaseModel):
-    node_id: int
-
-
-class FavouriteResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    user_id: int
-    node_id: int
-
-
 # ---------- Alert ----------
 
 class AlertBase(BaseModel):

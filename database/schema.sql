@@ -61,14 +61,6 @@ CREATE TABLE IF NOT EXISTS node_diagnostic (
     FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS favourite (
-    user_id INT NOT NULL,
-    node_id INT NOT NULL,
-    PRIMARY KEY (user_id, node_id),
-    FOREIGN KEY (user_id) REFERENCES `user`(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (node_id) REFERENCES node(node_id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS alert (
     alert_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

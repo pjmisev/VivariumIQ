@@ -106,13 +106,6 @@ class NodeDiagnostic(Base):
         DateTime, nullable=False,
         server_default=text("CURRENT_TIMESTAMP"))
 
-class Favourite(Base):
-    __tablename__ = "favourite"
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("user.user_id"), primary_key=True)
-    node_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("node.node_id"), primary_key=True)
-
 class Alert(Base):
     __tablename__ = "alert"
     alert_id: Mapped[int] = mapped_column(
