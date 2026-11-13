@@ -12,7 +12,6 @@ venv/
 env/
 
 # uv
-uv.lock
 
 # Databases
 *.db
@@ -42,6 +41,9 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# node repo zip
+urcast-node-main.zip
 
 # Kilo
 .kilo/

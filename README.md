@@ -237,27 +237,45 @@ All seven tables should be present, then drop the temporary database.
 
 ### Prerequisites
 
-- Python 3.13 or higher
+- Python 3.14 or higher (only needed for local development)
 - [uv](https://docs.astral.sh/uv/) for dependency management
-- MySQL or MariaDB, or Docker with Compose
-- A Mosquitto broker (Docker Compose starts one for you)
+- Docker with Compose (recommended), or MySQL/MariaDB and Mosquitto installed locally
 
 ### Option 1: Docker Compose (recommended)
 
-Starts the database, API and broker together. `database/schema.sql` is loaded automatically on the first database start.
+One command starts MariaDB, the API and Mosquitto. The schema in `database/schema.sql` is applied automatically the first time the database volume is created.
 
 ```bash
 git clone https://github.com/pjmisev/VivariumIQ.git
 cd VivariumIQ
-cp .env.example .env   # fill in DATABASE_URL and SECRET_KEY
 docker compose up -d --build
 ```
 
 - Dashboard: `http://localhost:8000/`
 - API docs: `http://localhost:8000/docs`
-- Broker: `localhost:1883`
+- Health check: `http://localhost:8000/health`
+- MQTT broker: `localhost:1883` (for the enclosure nodes)
 
-The Compose API service overrides `DATABASE_URL` and `MQTT_BROKER` to point at the Compose services.
+The stack runs with local defaults, so no `.env` is required to try it. For anything beyond a local demo, create a `.env` file first (Compose reads it automatically) and set:
+
+```bash
+SECRET_KEY=<long random string>
+MARIADB_PASSWORD=<database password>
+MARIADB_ROOT_PASSWORD=<root password>
+```
+
+`DATABASE_URL` and `MQTT_BROKER` are wired to the `db` and `mqtt` services inside Compose, so they do not need to be set for the container.
+
+Useful commands:
+
+```bash
+docker compose ps                 # service status and health
+docker compose logs -f api        # follow API and MQTT listener logs
+docker compose down               # stop the stack, keep database data
+docker compose down -v            # stop and delete the database volume
+```
+
+The API container runs the production server (`fastapi run`) from a prebuilt virtual environment, not a bind-mounted dev server.
 
 ### Option 2: Local development
 
@@ -287,6 +305,8 @@ Create `.env` in the project root:
 | `MQTT_PORT` | Broker port, `1883` by default, `8883` for TLS. |
 | `MQTT_TLS` | Set to `true` to connect to the broker over TLS. |
 | `MQTT_CA_FILE` | CA bundle used to verify the broker certificate. |
+| `MARIADB_PASSWORD` | Docker Compose only: password for the `vivariumiq` database user. |
+| `MARIADB_ROOT_PASSWORD` | Docker Compose only: MariaDB root password. |
 
 > If `DATABASE_URL` is omitted, the API falls back to `mysql+pymysql://root:password@localhost:3306/vivariumiq_db`. Do not rely on this default outside local development.
 
