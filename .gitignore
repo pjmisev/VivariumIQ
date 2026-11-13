@@ -42,9 +42,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# node repo zip
-urcast-node-main.zip
-
 # Kilo
 .kilo/
 

@@ -70,7 +70,7 @@ This repository contains the backend API, the MQTT ingestion service and the web
 Raspberry Pi 400 (enclosure node)        Mosquitto broker          VivariumIQ API
 ┌──────────────────────────┐            ┌──────────────┐         ┌────────────────────┐
 │ DHT22 / BMP280 / PIR /    │            │              │         │  mqtt_listener.py  │
-│ GPS / actuators           │ ─────────▶ │   urcast/    │ ──────▶ │  verifies the JWT, │
+│ GPS / actuators           │ ─────────▶ │   vivariumiq/    │ ──────▶ │  verifies the JWT, │
 │ sensor loop publishes     │  publish   │  <node_id>/  │         │  stores readings,  │
 │ JSON every few seconds    │            │   ...        │         │  diagnostics and   │
 └──────────────────────────┘            └──────────────┘         │  heartbeats        │
@@ -80,12 +80,12 @@ Raspberry Pi 400 (enclosure node)        Mosquitto broker          VivariumIQ AP
 ```
 
 1. **Register** - the node registers itself once with `POST /api/node`, sending the owner's JWT. The API takes the user id from the token, never from the request body, so a node is always linked to the logged-in user.
-2. **Publish** - the sensor loop reads the hardware and publishes each sample to `urcast/<node_id>/reading`, including the owner's JWT in the payload.
+2. **Publish** - the sensor loop reads the hardware and publishes each sample to `vivariumiq/<node_id>/reading`, including the owner's JWT in the payload.
 3. **Verify and store** - `mqtt_listener.py` decodes the token, checks that it belongs to the user that registered the node, stores the reading and marks the node `active` with a fresh `last_seen`. Messages with a missing, expired or foreign token are silently ignored.
 4. **Summarize** - a scheduled job aggregates raw readings into hourly summaries, and the API rolls those up into daily figures on request.
 5. **Serve** - the REST API and web dashboard expose live status, historical trends, diagnostics and alerts.
 
-> The MQTT topic prefix and several internal identifiers still use the original `urcast` name for compatibility with nodes already deployed. The product and database are VivariumIQ.
+> The MQTT topic prefix and several internal identifiers still use the original `VivariumIQ` name for compatibility with nodes already deployed. The product and database are VivariumIQ.
 
 ---
 
@@ -163,7 +163,7 @@ See [Project Status and Known Issues](#project-status-and-known-issues) for the 
 ├── Dockerfile              # API image
 ├── database/
 │   ├── schema.sql          # Database schema
-│   └── backup_urcast.sh    # Daily backup script
+│   └── backup_vivariumiq.sh    # Daily backup script
 ├── templates/              # Jinja2 landing, auth, dashboard, node, alert and profile pages
 ├── static/                 # Tailwind/daisyUI CSS, vendored frontend dependencies, JavaScript, icons and manifest
 └── tests/                  # pytest suite
@@ -210,15 +210,15 @@ The MySQL database is backed up automatically on the Ubuntu AWS server with a Ba
 - **Storage:** `/home/ubuntu/db_backup/`.
 - **Retention:** Backups older than six days are removed with `find -mtime +6`.
 - **Permissions:** `umask 077`, so only the owner can read the dump.
-- **Script:** `database/backup_urcast.sh`.
+- **Script:** `database/backup_vivariumiq.sh`.
 
 Cron entry:
 
 ```cron
-0 0 * * * /bin/bash /home/ubuntu/scripts/backup_urcast.sh
+0 0 * * * /bin/bash /home/ubuntu/scripts/backup_vivariumiq.sh
 ```
 
-Copy the script to `/home/ubuntu/scripts/backup_urcast.sh` and make sure the backup directory exists before installing the entry with `sudo crontab -e`.
+Copy the script to `/home/ubuntu/scripts/backup_vivariumiq.sh` and make sure the backup directory exists before installing the entry with `sudo crontab -e`.
 
 Restore check:
 
@@ -421,9 +421,9 @@ The Raspberry Pi nodes do not post telemetry through the REST API. They publish 
 
 | Topic | Payload | Stored as |
 |---|---|---|
-| `urcast/<node_id>/reading` | `temperature`, `humidity`, `pressure`, `motion_detected`, `token` | Row in `weather_reading` |
-| `urcast/<node_id>/diagnostic` | `uptime`, `wifi_connected`, sensor status flags, `token` | Row in `node_diagnostic` |
-| `urcast/<node_id>/heartbeat` | `token` | Updates node `status` and `last_seen` |
+| `vivariumiq/<node_id>/reading` | `temperature`, `humidity`, `pressure`, `motion_detected`, `token` | Row in `weather_reading` |
+| `vivariumiq/<node_id>/diagnostic` | `uptime`, `wifi_connected`, sensor status flags, `token` | Row in `node_diagnostic` |
+| `vivariumiq/<node_id>/heartbeat` | `token` | Updates node `status` and `last_seen` |
 
 Every payload must contain the `token` field with the node owner's JWT. The listener checks that the token belongs to the user that registered the node; otherwise the message is ignored.
 
@@ -521,12 +521,12 @@ To confirm TLS is enforced, a plain connection to 8883 must fail while one with 
 
 ```bash
 # Should fail the handshake - no CA given
-mosquitto_pub -h <broker-host> -p 8883 -t "urcast/test/heartbeat" -m '{}'
+mosquitto_pub -h <broker-host> -p 8883 -t "vivariumiq/test/heartbeat" -m '{}'
 
 # Should succeed
 mosquitto_pub -h <broker-host> -p 8883 \
   --cafile /etc/ssl/certs/ca-certificates.crt \
-  -t "urcast/test/heartbeat" -m '{}'
+  -t "vivariumiq/test/heartbeat" -m '{}'
 ```
 
 Port 1883 stays available as a fallback for the backend listener on the same machine, where traffic never leaves the server.
@@ -543,7 +543,7 @@ Port 1883 stays available as a fallback for the backend listener on the same mac
 
 ```bash
 # Watch the raw messages on the broker
-mosquitto_sub -h <broker-host> -t "urcast/#"
+mosquitto_sub -h <broker-host> -t "vivariumiq/#"
 
 # Check the node went active
 curl http://<api-host>:8000/api/node/1
