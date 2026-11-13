@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from decimal import Decimal
 from sqlalchemy import BigInteger, Boolean, DateTime, DECIMAL,ForeignKey, Integer, String, UniqueConstraint ,text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 
@@ -36,6 +37,25 @@ class Node(Base):
     installed_at: Mapped[datetime | None] = mapped_column(
         DateTime, server_default=text("CURRENT_TIMESTAMP"))
     last_seen: Mapped[datetime | None] = mapped_column(DateTime)
+    targets: Mapped[Optional["NodeTarget"]] = relationship(
+        "NodeTarget", back_populates="node", uselist=False,
+        cascade="all, delete-orphan")
+
+class NodeTarget(Base):
+    __tablename__ = "node_target"
+    node_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("node.node_id", ondelete="CASCADE"),
+        primary_key=True)
+    preset_key: Mapped[str | None] = mapped_column(String(64))
+    temperature_min: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    temperature_max: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    humidity_min: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    humidity_max: Mapped[Decimal | None] = mapped_column(DECIMAL(5, 2))
+    pressure_min: Mapped[Decimal | None] = mapped_column(DECIMAL(7, 2))
+    pressure_max: Mapped[Decimal | None] = mapped_column(DECIMAL(7, 2))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    node: Mapped["Node"] = relationship("Node", back_populates="targets")
 
 class WeatherReading(Base):
     __tablename__ = "weather_reading"

@@ -2,7 +2,7 @@
 
 VivariumIQ is a full-stack IoT remote monitoring and behavioral tracking system for exotic pet enclosures. A Raspberry Pi 400 with a complete sensor array captures microclimate telemetry, atmospheric pressure trends, regional positioning and physical security events. The data streams over an MQTT pub/sub broker to a cloud-hosted FastAPI backend, which validates and stores it, builds hourly and daily summaries, and serves a web dashboard and REST API.
 
-This repository contains the backend API, the MQTT ingestion service and the web dashboard foundation.
+This repository contains the backend API, the MQTT ingestion service and the web dashboard.
 
 ---
 
@@ -11,6 +11,7 @@ This repository contains the backend API, the MQTT ingestion service and the web
 - [System Architecture and Hardware](#system-architecture-and-hardware)
 - [Key Features](#key-features)
 - [How It Works](#how-it-works)
+- [Web Dashboard](#web-dashboard)
 - [Security Implementation](#security-implementation)
 - [Technology Stack](#technology-stack)
 - [Repository Structure](#repository-structure)
@@ -42,7 +43,7 @@ This repository contains the backend API, the MQTT ingestion service and the web
 
 **Communication Protocols:** MQTTS between the Pi and the broker, HTTPS for the web dashboard and REST API, MQTT pub/sub for telemetry ingestion.
 
-**Backend and Frontend:** FastAPI, Jinja2 templates with Bootstrap 5 and custom CSS (light, dark and auto themes).
+**Backend and Frontend:** FastAPI, Jinja2 templates, Tailwind CSS 4 and daisyUI 5, with a custom VivariumIQ light/dark theme.
 
 **Database:** MySQL / MariaDB (MariaDB 12 in Docker Compose).
 
@@ -88,6 +89,30 @@ Raspberry Pi 400 (enclosure node)        Mosquitto broker          VivariumIQ AP
 
 ---
 
+## Web Dashboard
+
+The web interface is server-rendered with Jinja2 and progressively enhanced with a small vanilla JavaScript layer. Tailwind CSS 4, daisyUI 5, and Chart.js are vendored under `static/vendor/`, so there is no frontend build step or runtime CDN dependency.
+
+| Route | Purpose |
+|---|---|
+| `/` | Public landing page with product overview and calls to action |
+| `/login`, `/register` | Account access screens with inline validation and password strength feedback |
+| `/app` | Authenticated overview: health banner, stats, 24-hour chart, enclosure cards, alerts and activity |
+| `/app/nodes` | Searchable enclosure list, status filters, favourite toggles and node registration |
+| `/app/nodes/{id}` | Per-node telemetry, hourly/daily history, diagnostics, edit/delete and node alerts |
+| `/app/alerts` | Create, edit, pause and delete threshold alerts |
+| `/app/profile` | Account settings, sign out and account deletion |
+
+The dashboard talks to the existing REST API with the JWT stored in `localStorage`, so every write is still authorised by the backend. If a token expires, the client clears the session and redirects to `/login` with a return path. The light/dark theme is remembered per browser.
+
+Each enclosure can use one of 55 species presets or custom temperature, humidity and pressure ranges. Those ranges drive the main health banner, the “In target” stat and the target status shown on every enclosure card, so the dashboard leads with husbandry health rather than raw charts.
+
+### Demo mode
+
+Set `DEMO_MODE_KEY` to a private value to let the host show the dashboard without a real account. Visiting `/demo?key=<value>` issues a signed 8-hour HttpOnly `viq_demo` cookie and redirects to `/app`, where readings, nodes and alerts are generated locally by `static/js/demo-data.js` and no changes touch the database. A banner in the app and an **Exit demo** button (which clears the cookie via `/demo/exit`) make the mode obvious. Leaving `DEMO_MODE_KEY` unset keeps `/demo` returning 404.
+
+---
+
 ## Security Implementation
 
 - **Authentication and Authorization:** Users register with an email and password, and receive a 24-hour JWT (HS256) on login. Passwords are hashed with bcrypt. Protected routes resolve the current user through the `get_current_user` dependency, and ownership is enforced either by comparing the user id inside the token with the record owner or through the `require_self` dependency.
@@ -112,7 +137,7 @@ See [Project Status and Known Issues](#project-status-and-known-issues) for the 
 | Database | MariaDB 12 / MySQL, PyMySQL driver |
 | Telemetry | MQTT / MQTTS, Eclipse Mosquitto, paho-mqtt |
 | Templating | Jinja2 |
-| Styling | Bootstrap 5, custom CSS, Montserrat font |
+| Styling | Tailwind CSS 4, daisyUI 5, custom CSS, Inter and Plus Jakarta Sans |
 | Auth | bcrypt, PyJWT |
 | Packaging | uv |
 | Containerization | Docker, Docker Compose |
@@ -139,8 +164,8 @@ See [Project Status and Known Issues](#project-status-and-known-issues) for the 
 ├── database/
 │   ├── schema.sql          # Database schema
 │   └── backup_urcast.sh    # Daily backup script
-├── templates/              # Jinja2 templates (home, layout, error)
-├── static/                 # CSS, icons and web manifest
+├── templates/              # Jinja2 landing, auth, dashboard, node, alert and profile pages
+├── static/                 # Tailwind/daisyUI CSS, vendored frontend dependencies, JavaScript, icons and manifest
 └── tests/                  # pytest suite
 ```
 
@@ -574,13 +599,17 @@ Implemented in this repository:
 - MQTT ingestion for readings, diagnostics and heartbeats, with TLS support
 - Hourly aggregation and daily summary endpoints
 - Favourite nodes and threshold alert CRUD
-- Web landing page, dark/light/auto theming and HTML error pages
+- Web landing page, login/register screens and responsive app shell
+- Dashboard with health banner, microclimate chart, enclosure cards, alerts and recent activity
+- Enclosure list and per-node views for telemetry, hourly/daily history, diagnostics and alert management
+- Favourite toggles, profile settings and account deletion
+- Light and dark themes plus HTML error pages
 - Daily database backups
 
 Not yet complete in this repository:
 
 - The biological clock/liveliness index is part of the product concept; the backend currently stores the raw signals it will use but does not compute the index yet.
-- Multi-pet profiles and the full dashboard UI (health banner, charts, actuator controls) are still being built.
+- Multi-pet profiles and actuator controls are still being built.
 - Actuator commands (LED and buzzer) are not exposed by the API yet.
 - The legacy bulk write endpoints `POST /api/reading`, `POST /api/diagnostics`, `PATCH`/`DELETE` on readings and diagnostics are currently unauthenticated and are not used by nodes. They should be removed or protected before production.
 - `GET /api/users` exposes account emails publicly and should be restricted or removed.

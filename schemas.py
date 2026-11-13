@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, model_validator
 from typing import Literal
+
+from species_presets import PRESETS_BY_KEY
 
 
 # ---------- User ----------
@@ -38,6 +40,46 @@ class TokenResponse(BaseModel):
 
 # ---------- Node ----------
 
+class NodeTargetsBase(BaseModel):
+    preset_key: str | None = Field(default=None, max_length=64)
+    temperature_min: Decimal | None = None
+    temperature_max: Decimal | None = None
+    humidity_min: Decimal | None = None
+    humidity_max: Decimal | None = None
+    pressure_min: Decimal | None = None
+    pressure_max: Decimal | None = None
+
+    @model_validator(mode="after")
+    def _validate_ranges(self):
+        for prefix in ("temperature", "humidity", "pressure"):
+            minimum = getattr(self, f"{prefix}_min")
+            maximum = getattr(self, f"{prefix}_max")
+            if minimum is not None and maximum is not None and minimum > maximum:
+                raise ValueError(
+                    f"{prefix}_min must be less than or equal to {prefix}_max"
+                )
+        return self
+
+
+class NodeTargetsInput(NodeTargetsBase):
+    pass
+
+
+class NodeTargetsResponse(NodeTargetsBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    node_id: int
+    updated_at: datetime
+
+    @computed_field
+    @property
+    def preset_name(self) -> str | None:
+        if not self.preset_key:
+            return None
+        preset = PRESETS_BY_KEY.get(self.preset_key)
+        return preset["name"] if preset else None
+
+
 class NodeBase(BaseModel):
     node_name: str = Field(min_length=1, max_length=100)
     latitude: Decimal | None = None
@@ -46,7 +88,7 @@ class NodeBase(BaseModel):
 
 
 class NodeCreate(NodeBase):
-    pass
+    targets: NodeTargetsInput | None = None
 
 
 class NodeUpdate(BaseModel):
@@ -64,6 +106,19 @@ class NodeResponse(NodeBase):
     status: str
     installed_at: datetime | None
     last_seen: datetime | None
+    targets: NodeTargetsResponse | None = None
+
+
+class SpeciesPresetResponse(BaseModel):
+    key: str
+    name: str
+    group: str
+    temperature_min: float
+    temperature_max: float
+    humidity_min: float
+    humidity_max: float
+    pressure_min: float
+    pressure_max: float
 
 
 # ---------- Weather Reading ----------

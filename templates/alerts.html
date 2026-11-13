@@ -1,0 +1,135 @@
+{% extends "app_layout.html" %}
+{% import "macros/icons.html" as icons %}
+
+{% block app_content %}
+<div class="mx-auto max-w-6xl">
+  <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Thresholds</p>
+      <h2 class="mt-1.5 font-display text-2xl font-extrabold tracking-[-0.035em] sm:text-3xl">Alerts</h2>
+      <p class="mt-2 text-sm text-base-content/50">Get a clear visual warning when a measurement crosses your line.</p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" class="btn btn-ghost btn-sm gap-2" data-refresh>
+        {{ icons.icon("refresh", "h-4 w-4") }}
+        Refresh
+      </button>
+      <button type="button" class="btn btn-primary btn-sm gap-2" data-open-alert-modal>
+        {{ icons.icon("plus", "h-4 w-4") }}
+        New alert
+      </button>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+    <div class="rounded-2xl border border-base-content/8 bg-base-100 px-4 py-3">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-base-content/40">Configured</p>
+      <p class="mt-1 font-display text-xl font-extrabold tabular" data-alert-stat="total">—</p>
+    </div>
+    <div class="rounded-2xl border border-success/15 bg-success/5 px-4 py-3">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-success/70">Armed</p>
+      <p class="mt-1 font-display text-xl font-extrabold tabular" data-alert-stat="armed">—</p>
+    </div>
+    <div class="rounded-2xl border border-error/15 bg-error/5 px-4 py-3">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-error/70">Triggered</p>
+      <p class="mt-1 font-display text-xl font-extrabold tabular" data-alert-stat="triggered">—</p>
+    </div>
+  </div>
+
+  <div id="alerts-list" class="mt-6 space-y-3">
+    <div class="skeleton h-20 rounded-2xl"></div>
+    <div class="skeleton h-20 rounded-2xl"></div>
+    <div class="skeleton h-20 rounded-2xl"></div>
+  </div>
+
+  <div id="alerts-empty" class="mt-6 hidden">
+    <div class="card border-dashed bg-base-100">
+      <div class="card-body items-center py-14 text-center">
+        <span class="icon-tile">{{ icons.icon("bell", "h-6 w-6") }}</span>
+        <h3 class="mt-3 font-display text-lg font-bold">No alerts yet</h3>
+        <p class="max-w-sm text-sm leading-6 text-base-content/50">Set a threshold on temperature, humidity or pressure for any enclosure.</p>
+        <button type="button" class="btn btn-primary btn-sm mt-3 gap-2" data-open-alert-modal>
+          {{ icons.icon("plus", "h-4 w-4") }}
+          Create your first alert
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-8 rounded-2xl border border-base-content/8 bg-base-100 p-5">
+    <div class="flex items-start gap-3">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">{{ icons.icon("sparkles", "h-5 w-5") }}</span>
+      <div>
+        <h3 class="text-sm font-semibold">How alerts are evaluated</h3>
+        <p class="mt-1 text-xs leading-5 text-base-content/55">The dashboard compares each armed threshold against the latest reading from that enclosure. A crossed threshold changes the health banner and the alert cards, so an unexpected number does not hide in a table.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="alert-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <form method="dialog">
+      <button class="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" aria-label="Close">{{ icons.icon("x", "h-4 w-4") }}</button>
+    </form>
+    <div class="flex items-center gap-3">
+      <span class="icon-tile">{{ icons.icon("bell", "h-5 w-5") }}</span>
+      <div>
+        <h3 class="font-display text-lg font-bold" id="alert-modal-title">New alert</h3>
+        <p class="text-xs text-base-content/45" id="alert-modal-subtitle">Watch a measurement on one enclosure.</p>
+      </div>
+    </div>
+
+    <div id="alert-form-error" class="alert alert-error mt-5 hidden text-sm" role="alert"><span id="alert-form-error-message"></span></div>
+
+    <form id="alert-form" class="mt-5 space-y-4" novalidate>
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="alert-node">Enclosure</label>
+        <select id="alert-node" name="node_id" required class="select select-bordered w-full text-sm">
+          <option value="" disabled selected>Select an enclosure</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="alert-measurement">Measurement</label>
+          <select id="alert-measurement" name="measurement_type" class="select select-bordered w-full text-sm">
+            <option value="temperature">Temperature</option>
+            <option value="humidity">Humidity</option>
+            <option value="pressure">Pressure</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="alert-operator">Condition</label>
+          <select id="alert-operator" name="comparison_operator" class="select select-bordered w-full text-sm">
+            <option value="&gt;">Above (&gt;)</option>
+            <option value="&lt;">Below (&lt;)</option>
+            <option value="&gt;=">At or above (&gt;=)</option>
+            <option value="&lt;=">At or below (&lt;=)</option>
+            <option value="==">Equals (==)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="alert-threshold">Threshold</label>
+        <input id="alert-threshold" name="threshold_value" type="number" step="any" required class="input input-bordered w-full text-sm" placeholder="e.g. 85">
+      </div>
+      <label class="flex cursor-pointer items-center justify-between rounded-xl bg-base-200/70 px-4 py-3">
+        <span>
+          <span class="block text-xs font-semibold">Arm this alert</span>
+          <span class="mt-0.5 block text-[11px] text-base-content/45">Paused alerts are kept but not evaluated.</span>
+        </span>
+        <input id="alert-enabled" name="enabled" type="checkbox" class="toggle toggle-primary toggle-sm" checked>
+      </label>
+      <div class="modal-action mt-2">
+        <button type="button" class="btn btn-ghost btn-sm" data-close-alert-modal>Cancel</button>
+        <button id="alert-submit" type="submit" class="btn btn-primary btn-sm">Create alert</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
+</dialog>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', path='js/alerts.js') }}" defer></script>
+{% endblock %}

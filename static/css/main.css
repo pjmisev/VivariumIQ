@@ -1,39 +1,99 @@
-:root {
-  /* Fonts */
-  --font-heading: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont,
-    sans-serif;
-  --font-body: "Nunito", system-ui, -apple-system, BlinkMacSystemFont,
-    sans-serif;
+/* ------------------------------------------------------------------
+   VivariumIQ design system
+   Tailwind CSS utilities + daisyUI components, with a custom biophilic
+   theme built around the VivariumIQ steel-blue and lime brand.
+   ------------------------------------------------------------------ */
 
-  /* Colors */
-  --color-bg-body: #fafafa;
-  --color-bg-content: #ffffff;
-  --color-text-primary: #333333;
-  --color-text-heading: #444444;
-  --color-steel: #527c9f;
-  --color-nav-link: #cbd5db;
-  --color-nav-link-hover: #ffffff;
-  --color-link-hover: #428bca;
-  --color-border: #dddddd;
-  --color-border-light: #e3e3e3;
+[data-theme="vivarium"] {
+  color-scheme: light;
 
-  /* Spacing */
-  --spacing-xl: 5rem;
+  --color-base-100: oklch(99% 0.004 240);
+  --color-base-200: oklch(96.5% 0.009 240);
+  --color-base-300: oklch(92.5% 0.016 240);
+  --color-base-content: oklch(26% 0.025 240);
 
-  /* Sizing */
-  --article-img-size: 4rem; /* 64px converted to rem */
-  --account-img-size: 7.813rem; /* 125px converted to rem */
+  --color-primary: oklch(55% 0.078 235);
+  --color-primary-content: oklch(98.5% 0.008 235);
+  --color-secondary: oklch(72% 0.15 130);
+  --color-secondary-content: oklch(22% 0.055 130);
+  --color-accent: oklch(74% 0.105 200);
+  --color-accent-content: oklch(22% 0.035 200);
+  --color-neutral: oklch(34% 0.028 240);
+  --color-neutral-content: oklch(97% 0.006 240);
+
+  --color-info: oklch(68% 0.105 230);
+  --color-info-content: oklch(18% 0.035 230);
+  --color-success: oklch(67% 0.145 150);
+  --color-success-content: oklch(18% 0.045 150);
+  --color-warning: oklch(78% 0.145 78);
+  --color-warning-content: oklch(24% 0.045 78);
+  --color-error: oklch(62% 0.17 26);
+  --color-error-content: oklch(98% 0.008 26);
+
+  --radius-selector: 999rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
-/* Base Styles */
+[data-theme="vivarium-dark"] {
+  color-scheme: dark;
+
+  --color-base-100: oklch(21% 0.018 240);
+  --color-base-200: oklch(18% 0.017 240);
+  --color-base-300: oklch(26% 0.022 240);
+  --color-base-content: oklch(94% 0.008 240);
+
+  --color-primary: oklch(72% 0.09 235);
+  --color-primary-content: oklch(18% 0.035 235);
+  --color-secondary: oklch(76% 0.15 130);
+  --color-secondary-content: oklch(19% 0.05 130);
+  --color-accent: oklch(78% 0.105 200);
+  --color-accent-content: oklch(19% 0.035 200);
+  --color-neutral: oklch(30% 0.024 240);
+  --color-neutral-content: oklch(94% 0.008 240);
+
+  --color-info: oklch(76% 0.1 230);
+  --color-info-content: oklch(17% 0.035 230);
+  --color-success: oklch(76% 0.14 150);
+  --color-success-content: oklch(17% 0.045 150);
+  --color-warning: oklch(82% 0.14 78);
+  --color-warning-content: oklch(21% 0.045 78);
+  --color-error: oklch(70% 0.16 26);
+  --color-error-content: oklch(17% 0.04 26);
+
+  --radius-selector: 999rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* ---------- Base ---------- */
+
+:root {
+  --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-body);
-  background: var(--color-bg-body);
-  color: var(--color-text-primary);
-}
-
-main {
-  padding-top: var(--spacing-xl);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  background-color: var(--color-base-200);
+  color: var(--color-base-content);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
@@ -41,255 +101,388 @@ h2,
 h3,
 h4,
 h5,
-h6 {
-  font-family: var(--font-heading);
-  color: var(--color-text-heading);
+h6,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
 }
 
-.navbar-brand {
-  font-family: var(--font-heading);
+a,
+button,
+input,
+select,
+textarea {
+  outline-color: var(--color-primary);
 }
 
-a {
-  text-decoration: none;
-}
-
-a:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--color-link-hover);
+:focus-visible {
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Headers and Navigation */
-.bg-steel {
-  background-color: var(--color-steel);
+::selection {
+  background: color-mix(in oklch, var(--color-primary) 26%, transparent);
 }
 
-.site-header .navbar-nav .nav-link {
-  color: var(--color-nav-link);
-  transition: color 0.2s ease-in-out;
+/* ---------- Brand & decorative helpers ---------- */
+
+.brand-gradient {
+  background-image: linear-gradient(135deg, #4f7fa3 0%, #3f6f91 46%, #2d5b79 100%);
 }
 
-.site-header .navbar-nav .nav-link:hover,
-.site-header .navbar-nav .nav-link:focus {
-  color: var(--color-nav-link-hover);
+.brand-gradient-soft {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--color-primary) 14%, var(--color-base-100)),
+    color-mix(in oklch, var(--color-secondary) 12%, var(--color-base-100))
+  );
 }
 
-.site-header .navbar-nav .nav-link.active {
+.gradient-text {
+  background-image: linear-gradient(100deg, #3f6f91 0%, #527c9f 38%, #65a30d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-theme="vivarium-dark"] .gradient-text {
+  background-image: linear-gradient(100deg, #9fc6e2 0%, #8fc4e8 38%, #bef264 100%);
+}
+
+.hero-mesh {
+  background-color: var(--color-base-100);
+  background-image:
+    radial-gradient(at 8% 8%, color-mix(in oklch, var(--color-primary) 24%, transparent) 0px, transparent 42%),
+    radial-gradient(at 88% 2%, color-mix(in oklch, var(--color-secondary) 20%, transparent) 0px, transparent 38%),
+    radial-gradient(at 72% 74%, color-mix(in oklch, var(--color-accent) 20%, transparent) 0px, transparent 38%),
+    linear-gradient(180deg, transparent 55%, var(--color-base-200) 100%);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--color-base-content) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--color-base-content) 6%, transparent) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, black 35%, transparent 92%);
+}
+
+.dot-grid {
+  background-image: radial-gradient(color-mix(in oklch, var(--color-base-content) 16%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.glass {
+  background: color-mix(in oklch, var(--color-base-100) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+}
+
+.card-lift {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 42px -24px color-mix(in oklch, var(--color-base-content) 45%, transparent);
+  border-color: color-mix(in oklch, var(--color-primary) 28%, var(--color-base-300));
+}
+
+.hairline {
+  border-color: color-mix(in oklch, var(--color-base-content) 10%, transparent);
+}
+
+.icon-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  width: 2.75rem;
+  border-radius: 0.85rem;
+  background: color-mix(in oklch, var(--color-primary) 13%, transparent);
+  color: var(--color-primary);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Status ---------- */
+
+.status-dot {
+  position: relative;
+  display: inline-block;
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 999rem;
+  background: currentColor;
+}
+
+.status-dot.is-live::after {
+  content: "";
+  position: absolute;
+  inset: -0.25rem;
+  border-radius: 999rem;
+  border: 1px solid currentColor;
+  opacity: 0.55;
+  animation: status-pulse 2s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  70% { transform: scale(1.25); opacity: 0; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+/* ---------- App shell ---------- */
+
+.app-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--color-base-100) 96%, transparent), var(--color-base-100));
+  border-right: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.8rem;
+  color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  font-size: 0.9rem;
+  font-weight: 550;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.nav-item:hover {
+  background: color-mix(in oklch, var(--color-base-content) 6%, transparent);
+  color: var(--color-base-content);
+}
+
+.nav-item.active {
+  background: color-mix(in oklch, var(--color-primary) 13%, transparent);
+  color: var(--color-primary);
+}
+
+.nav-item.active .nav-icon {
+  color: var(--color-primary);
+}
+
+.nav-icon {
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+}
+
+/* ---------- Charts ---------- */
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 20rem;
+}
+
+.chart-wrap canvas {
+  cursor: crosshair;
+}
+
+.chart-wrap-sm {
+  height: 11rem;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  color: color-mix(in oklch, var(--color-base-content) 45%, transparent);
+}
+
+/* ---------- Auth ---------- */
+
+.auth-brand-panel {
+  position: relative;
+  overflow: hidden;
+  background-image:
+    radial-gradient(at 14% 12%, rgba(143, 196, 232, 0.5) 0, transparent 42%),
+    radial-gradient(at 80% 20%, rgba(190, 242, 100, 0.22) 0, transparent 34%),
+    radial-gradient(at 70% 88%, rgba(63, 111, 145, 0.55) 0, transparent 46%),
+    linear-gradient(140deg, #14202e 0%, #24445c 52%, #3f6f91 100%);
+}
+
+.auth-brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(145deg, black, transparent 74%);
+  pointer-events: none;
+}
+
+/* ---------- Scrollbar ---------- */
+
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-base-content) 22%, transparent) transparent;
+}
+
+.scrollbar-slim::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-base-content) 18%, transparent);
+  border-radius: 99px;
+}
+
+/* ---------- Motion ---------- */
+
+.reveal {
+  animation: rise-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reveal-delay-1 { animation-delay: 80ms; }
+.reveal-delay-2 { animation-delay: 160ms; }
+.reveal-delay-3 { animation-delay: 240ms; }
+.reveal-delay-4 { animation-delay: 320ms; }
+
+.float-slow {
+  animation: float 7s ease-in-out infinite;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.fade-in {
+  animation: fade-in 220ms ease both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal,
+  .float-slow,
+  .fade-in,
+  .status-dot.is-live::after {
+    animation: none !important;
+  }
+  .card-lift:hover {
+    transform: none;
+  }
+}
+
+/* ---------- daisyUI fine tuning ---------- */
+
+.btn {
   font-weight: 600;
-}
-
-/* Content Sections */
-.content-section {
-  background: var(--color-bg-content);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
-  transition: box-shadow 0.15s ease, transform 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.content-section:hover {
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
-  border-color: var(--color-border-light);
-}
-
-/* Articles */
-.article-title {
-  color: var(--color-text-heading);
-  transition: color 0.2s ease-in-out;
-}
-
-a.article-title:hover,
-a.article-title:focus {
-  color: var(--color-link-hover);
-  text-decoration: none;
-}
-
-.article-content {
-  white-space: pre-line;
-  font-size: 1.25rem;
-}
-
-.article-img {
-  height: var(--article-img-size);
-  width: var(--article-img-size);
-  flex-shrink: 0;
-  object-fit: cover;
-  border: 1px solid var(--color-border-light);
-  box-shadow: 0 0 0 2px var(--color-bg-content);
-}
-
-.article-metadata {
-  padding-bottom: 0.063rem; /* 1px converted to rem */
-  border-bottom: 1px solid var(--color-border-light);
-}
-
-.article-metadata a {
-  transition: color 0.2s ease-in-out;
-}
-
-.article-metadata a:hover,
-.article-metadata a:focus {
-  color: var(--color-text-primary);
-  text-decoration: none;
-}
-
-.article-svg {
-  width: 1.563rem; /* 25px converted to rem */
-  height: 1.563rem;
-  vertical-align: middle;
-}
-
-/* Account/Profile */
-.account-img {
-  height: var(--account-img-size);
-  width: var(--account-img-size);
-  object-fit: cover;
-}
-
-.account-heading {
-  font-size: 2.5rem;
-}
-
-.file-input-sm {
-  max-width: 300px;
-}
-
-/* Custom Button Colors - Light Mode */
-.btn-outline-primary {
-  --bs-btn-color: #527c9f;
-  --bs-btn-border-color: #527c9f;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: #466a87;
-  --bs-btn-hover-border-color: #3f6179;
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: #3f6179;
-  --bs-btn-active-border-color: #3a5b72;
-}
-
-.btn-outline-secondary {
-  --bs-btn-color: #495057;
-  --bs-btn-border-color: #6c757d;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: #5a6268;
-  --bs-btn-hover-border-color: #545b62;
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: #545b62;
-  --bs-btn-active-border-color: #4e555b;
-}
-
-.btn-outline-danger {
-  --bs-btn-color: #a85b5b;
-  --bs-btn-border-color: #a85b5b;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: #924e4e;
-  --bs-btn-hover-border-color: #874848;
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: #874848;
-  --bs-btn-active-border-color: #7c4242;
+  letter-spacing: -0.01em;
 }
 
 .btn-primary {
-  --bs-btn-color: #fff;
-  --bs-btn-bg: #527c9f;
-  --bs-btn-border-color: #527c9f;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: #466a87;
-  --bs-btn-hover-border-color: #3f6179;
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: #3f6179;
-  --bs-btn-active-border-color: #3a5b72;
+  box-shadow: 0 10px 24px -14px color-mix(in oklch, var(--color-primary) 70%, transparent);
 }
 
-.btn-danger {
-  --bs-btn-color: #fff;
-  --bs-btn-bg: #a85b5b;
-  --bs-btn-border-color: #a85b5b;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: #924e4e;
-  --bs-btn-hover-border-color: #874848;
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: #874848;
-  --bs-btn-active-border-color: #7c4242;
+.input,
+.select,
+.textarea {
+  font-weight: 450;
 }
 
-/* Custom Button Colors - Dark Mode */
-[data-bs-theme="dark"] .btn-outline-primary {
-  --bs-btn-color: #8aadc8;
-  --bs-btn-border-color: #8aadc8;
-  --bs-btn-hover-color: #000;
-  --bs-btn-hover-bg: #8aadc8;
-  --bs-btn-hover-border-color: #9fbdd4;
-  --bs-btn-active-color: #000;
-  --bs-btn-active-bg: #9fbdd4;
-  --bs-btn-active-border-color: #b4cde0;
+.card {
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
 }
 
-[data-bs-theme="dark"] .btn-outline-secondary {
-  --bs-btn-color: #b8bfc6;
-  --bs-btn-border-color: #8a939b;
-  --bs-btn-hover-color: #000;
-  --bs-btn-hover-bg: #b8bfc6;
-  --bs-btn-hover-border-color: #adb5bd;
-  --bs-btn-active-color: #000;
-  --bs-btn-active-bg: #adb5bd;
-  --bs-btn-active-border-color: #a2aab2;
+.table :where(th, td) {
+  border-color: color-mix(in oklch, var(--color-base-content) 7%, transparent);
 }
 
-[data-bs-theme="dark"] .btn-outline-danger {
-  --bs-btn-color: #d89090;
-  --bs-btn-border-color: #d89090;
-  --bs-btn-hover-color: #000;
-  --bs-btn-hover-bg: #d89090;
-  --bs-btn-hover-border-color: #e0a8a8;
-  --bs-btn-active-color: #000;
-  --bs-btn-active-bg: #e0a8a8;
-  --bs-btn-active-border-color: #e8bcbc;
+.table thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
 }
 
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .account-heading {
-    font-size: 2rem;
+.modal-box {
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 9%, transparent);
+}
+
+.toast-root {
+  position: fixed;
+  inset-inline: auto;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  display: flex;
+  width: min(24rem, calc(100vw - 2rem));
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+@media (max-width: 640px) {
+  .toast-root {
+    right: 0.75rem;
+    bottom: 0.75rem;
   }
-
-  .article-img {
-    height: 3rem;
-    width: 3rem;
+  .chart-wrap {
+    height: 15rem;
   }
 }
+/* ---------- Auth visibility helpers ---------- */
 
-/* Dark Mode Features */
-
-[data-bs-theme="dark"] {
-  --color-bg-body: #1a1a1a;
-  --color-bg-content: #2d2d2d;
-  --color-text-primary: #e0e0e0;
-  --color-text-heading: #f0f0f0;
-  --color-border: #404040;
-  --color-border-light: #4a4a4a;
+.viq-auth-hidden {
+  display: none !important;
 }
 
-[data-bs-theme="dark"] .content-section {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
+/* ---------- Non-standard daisyUI colour opacity steps ----------
+   daisyUI ships 5/10/20/.../90 modifiers. These match the few extra
+   steps used by the dashboard so the design stays consistent even
+   without a Tailwind build step. */
 
-[data-bs-theme="dark"] article.content-section:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
+.bg-base-content\/25 { background-color: color-mix(in oklch, var(--color-base-content) 25%, transparent); }
+.bg-error\/12 { background-color: color-mix(in oklch, var(--color-error) 12%, transparent); }
+.bg-primary\/12 { background-color: color-mix(in oklch, var(--color-primary) 12%, transparent); }
+.bg-primary\/15 { background-color: color-mix(in oklch, var(--color-primary) 15%, transparent); }
+.bg-secondary\/15 { background-color: color-mix(in oklch, var(--color-secondary) 15%, transparent); }
+.bg-success\/12 { background-color: color-mix(in oklch, var(--color-success) 12%, transparent); }
+.bg-warning\/15 { background-color: color-mix(in oklch, var(--color-warning) 15%, transparent); }
 
-/* Custom Modal Colors */
-.modal-header.bg-success {
-  background-color: #4a7c5d !important;
-}
+.border-base-content\/7 { border-color: color-mix(in oklch, var(--color-base-content) 7%, transparent); }
+.border-base-content\/8 { border-color: color-mix(in oklch, var(--color-base-content) 8%, transparent); }
+.border-base-content\/12 { border-color: color-mix(in oklch, var(--color-base-content) 12%, transparent); }
+.border-error\/15 { border-color: color-mix(in oklch, var(--color-error) 15%, transparent); }
+.border-primary\/15 { border-color: color-mix(in oklch, var(--color-primary) 15%, transparent); }
+.border-success\/15 { border-color: color-mix(in oklch, var(--color-success) 15%, transparent); }
+.border-warning\/25 { border-color: color-mix(in oklch, var(--color-warning) 25%, transparent); }
 
-.modal-header.bg-danger {
-  background-color: #a85b5b !important;
-}
+.text-base-content\/35 { color: color-mix(in oklch, var(--color-base-content) 35%, transparent); }
+.text-base-content\/45 { color: color-mix(in oklch, var(--color-base-content) 45%, transparent); }
+.text-base-content\/55 { color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+.text-base-content\/65 { color: color-mix(in oklch, var(--color-base-content) 65%, transparent); }
+.text-base-content\/75 { color: color-mix(in oklch, var(--color-base-content) 75%, transparent); }
+.text-primary\/25 { color: color-mix(in oklch, var(--color-primary) 25%, transparent); }
+.text-primary\/55 { color: color-mix(in oklch, var(--color-primary) 55%, transparent); }
 
-/* Ensure modal header text stays white in both themes */
-.modal-header.bg-success .modal-title,
-.modal-header.bg-danger .modal-title {
-  color: #ffffff !important;
-}
+/* Directional target-state accents (daisyUI only ships all-side colour utilities). */
+.border-l-success { border-left-color: var(--color-success) !important; }
+.border-l-warning { border-left-color: var(--color-warning) !important; }
+.border-l-error { border-left-color: var(--color-error) !important; }
+.border-l-base-content\/20 { border-left-color: color-mix(in oklch, var(--color-base-content) 20%, transparent) !important; }
+.border-l-4 { border-left-width: 4px; }
+.chart-wrap canvas.is-panning { cursor: grabbing; }

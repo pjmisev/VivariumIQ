@@ -2,9 +2,9 @@
 # stores them in the database.
 #
 # Topics the nodes can send on:
-#   urcast/<node_id>/reading    -> one raw sensor sample
-#   urcast/<node_id>/diagnostic -> sensor health report
-#   urcast/<node_id>/heartbeat  -> just tells us the node is still online
+#   vivariumiq/<node_id>/reading    -> one raw sensor sample
+#   vivariumiq/<node_id>/diagnostic -> sensor health report
+#   vivariumiq/<node_id>/heartbeat  -> just tells us the node is still online
 #
 # Every message payload has to contain the JWT token of the user that owns the
 # node (same token that was used to register the node with POST /api/node).
@@ -121,9 +121,9 @@ def store_heartbeat(node_id: int, data: dict) -> None:
 
 
 def on_message(client, userdata, msg):
-    # topic looks like urcast/<node_id>/<kind>
+    # topic looks like vivariumiq/<node_id>/<kind>
     parts = msg.topic.split("/")
-    if len(parts) != 3 or parts[0] != "urcast":
+    if len(parts) != 3 or parts[0] != "vivariumiq":
         return
     try:
         node_id = int(parts[1])
@@ -148,7 +148,7 @@ def on_message(client, userdata, msg):
 
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
-        client.subscribe("urcast/#")
+        client.subscribe("vivariumiq/#")
         if MQTT_TLS:
             print(f"connected to mqtt broker {MQTT_BROKER}:{MQTT_PORT} over tls, listening for node messages")
         else:

@@ -1,193 +1,135 @@
+{% import "macros/icons.html" as icons %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="vivarium">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#3f6f91">
 
-    <!-- Site Info -->
-    {% if title %}
-      <title>FastAPI - {{ title }}</title>
-    {% else %}
-      <title>FastAPI Sensor Readings</title>
-    {% endif %}
-    <meta name="description" content="FastAPI Tutorial">
-    <meta name="author" content="Corey Schafer">
+    <title>{% if title %}{{ title }} · VivariumIQ{% else %}VivariumIQ{% endif %}</title>
+    <meta name="description" content="{% block description %}VivariumIQ is remote monitoring and behavioural tracking for exotic pet enclosures.{% endblock %}">
+    <meta name="author" content="VivariumIQ">
 
-    <!-- Open Graph Tags: The title of the page for social media sharing. It can match the title tag or be more descriptive. -->
-    <meta property="og:title" content="FastAPI Sensors">
-
-    <!-- Open Graph Tags: Typically set to "website" for static sites or "article" for content-heavy pages. -->
+    <meta property="og:title" content="{% if title %}{{ title }} · VivariumIQ{% else %}VivariumIQ{% endif %}">
+    <meta property="og:description" content="{% block og_description %}Enclosure intelligence for keepers who care about the details.{% endblock %}">
     <meta property="og:type" content="website">
+    <meta property="og:image" content="{{ url_for('static', path='icons/vivariumiq_icon_512.png') }}">
 
-    <!-- Open Graph Tags: The URL of the page, used to ensure link previews resolve to the correct page. -->
-    <meta property="og:url" content="">
-
-    <!-- Open Graph Tags: URL of an image that represents the page. Useful for link previews. -->
-    <meta property="og:image" content="">
-
-    <!-- Open Graph Tags: Provides an alternative text for the image to improve accessibility. -->
-    <meta property="og:image:alt" content="">
-
-    <!-- Preconnect for Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Custom Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap"
-          rel="stylesheet">
+    <!-- Vendored: daisyUI 5.8.0 + @tailwindcss/browser 4.3.5 -->
+    <link href="{{ url_for('static', path='vendor/daisyui.css') }}" rel="stylesheet" type="text/css">
+    <script src="{{ url_for('static', path='vendor/tailwind-browser.js') }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/main.css') }}">
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-          rel="stylesheet"
-          integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
-          crossorigin="anonymous">
+    <link rel="icon" href="{{ url_for('static', path='icons/favicon.ico') }}" sizes="any">
+    <link rel="icon" href="{{ url_for('static', path='icons/vivariumiq_favicon_32.png') }}" type="image/png" sizes="32x32">
+    <link rel="icon" href="{{ url_for('static', path='icons/vivariumiq_favicon_16.png') }}" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', path='icons/vivariumiq_apple_touch_180.png') }}">
+    <link rel="manifest" href="{{ url_for('static', path='site.webmanifest') }}">
 
-    <!-- Stylesheet -->
-    <link rel="stylesheet"
-          type="text/css"
-          href="{{ url_for("static", path='css/main.css') }}">
-
-    <!-- Set a theme color that matches your website's primary color -->
-    <meta name="theme-color" content="#527c9f">
-
-    <!-- Favicon for all browsers -->
-    <link rel="icon"
-          href="{{ url_for('static', path='icons/favicon.ico') }}"
-          sizes="any">
-    <link rel="icon"
-          href="{{ url_for('static', path='icons/vivariumiq_favicon_32.png') }}"
-          type="image/png"
-          sizes="32x32">
-    <link rel="icon"
-          href="{{ url_for('static', path='icons/vivariumiq_favicon_16.png') }}"
-          type="image/png"
-          sizes="16x16">
-
-    <!-- Apple touch icon for iOS devices -->
-    <link rel="apple-touch-icon"
-          sizes="180x180"
-          href="{{ url_for('static', path='icons/vivariumiq_apple_touch_180.png') }}">
-    <!-- Web app manifest for Progressive Web Apps -->
-    <link rel="manifest"
-          href="{{ url_for('static', path='site.webmanifest') }}">
-
-    <!-- Content Security Policy: Uncomment to enhance security by restricting where content can be loaded from (useful for preventing certain attacks like XSS). Update if adding external sources (e.g., Google Fonts, Bootstrap CDN, analytics, etc). -->
-    <!-- <meta http-equiv="Content-Security-Policy" content=" default-src 'self'; script-src 'self' code.jquery.com; style-src 'self' fonts.googleapis.com; font-src fonts.gstatic.com; img-src 'self' images.examplecdn.com; "> -->
+    <script>
+      (() => {
+        try {
+          const saved = localStorage.getItem("viq_theme");
+          document.documentElement.setAttribute("data-theme", saved === "vivarium-dark" ? "vivarium-dark" : "vivarium");
+        } catch (_) {}
+      })();
+    </script>
   </head>
-  <body class="d-flex flex-column min-vh-100">
-    <header class="site-header">
-      <nav class="navbar navbar-expand-md bg-steel fixed-top"
-           data-bs-theme="dark">
-        <div class="container">
-          <a class="navbar-brand me-4" href="{{ url_for('home') }}">FastAPI Sensors</a>
-          <button class="navbar-toggler"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#navbarToggle"
-                  aria-controls="navbarToggle"
-                  aria-expanded="false"
-                  aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+  <body class="min-h-screen bg-base-200 text-base-content antialiased" {% block body_attrs %}{% endblock %}>
+    {% block nav %}
+    <header class="sticky top-0 z-50 border-b border-base-content/5 glass">
+      <div class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <a href="{{ url_for('home') }}" class="flex items-center gap-2.5" aria-label="VivariumIQ home">
+          <img src="{{ url_for('static', path='icons/vivariumiq_mark.svg') }}" alt="" class="h-9 w-9 rounded-xl shadow-sm">
+          <span class="font-display text-lg font-bold tracking-tight">Vivarium<span class="text-primary">IQ</span></span>
+        </a>
+
+        <nav class="ml-6 hidden items-center gap-1 lg:flex" aria-label="Primary">
+          <a href="{{ url_for('home') }}#features" class="btn btn-ghost btn-sm font-medium">Features</a>
+          <a href="{{ url_for('home') }}#how-it-works" class="btn btn-ghost btn-sm font-medium">How it works</a>
+          <a href="{{ url_for('home') }}#security" class="btn btn-ghost btn-sm font-medium">Security</a>
+        </nav>
+
+        <div class="ml-auto flex items-center gap-2">
+          <button type="button" class="btn btn-ghost btn-circle btn-sm" data-theme-toggle aria-label="Switch colour theme">
+            <span data-theme-icon="sun" class="hidden">{{ icons.icon("sun", "h-5 w-5") }}</span>
+            <span data-theme-icon="moon">{{ icons.icon("moon", "h-5 w-5") }}</span>
           </button>
-          <div class="collapse navbar-collapse" id="navbarToggle">
-            <div class="navbar-nav me-auto">
-              <a class="nav-link active"
-                 aria-current="page"
-                 href="{{ url_for("home") }}">Home</a>
-            </div>
-            <!-- Navbar Right Side -->
-            <div class="navbar-nav">
-              <a class="btn btn-outline-light mb-2 mb-md-0 me-md-2" href="#">Login</a>
-              <a class="btn btn-light mb-2 mb-md-0 me-md-3" href="#">Register</a>
-              <div class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle"
-                   href="#"
-                   role="button"
-                   id="bd-theme"
-                   data-bs-toggle="dropdown"
-                   aria-expanded="false">
-                  <span id="bd-theme-text">🌗 Auto</span>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="bd-theme">
-                  <li>
-                    <button class="dropdown-item" type="button" data-bs-theme-value="light">🌝 Light</button>
-                  </li>
-                  <li>
-                    <button class="dropdown-item" type="button" data-bs-theme-value="dark">🌚 Dark</button>
-                  </li>
-                  <li>
-                    <button class="dropdown-item" type="button" data-bs-theme-value="auto">🌗 Auto</button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm hidden sm:inline-flex" data-auth-only>Dashboard</a>
+          <a href="{{ url_for('login') }}" class="btn btn-ghost btn-sm hidden sm:inline-flex" data-guest-only>Log in</a>
+          <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm hidden sm:inline-flex" data-guest-only>Start monitoring</a>
+          <button type="button" class="btn btn-ghost btn-circle btn-sm lg:hidden" data-mobile-toggle aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+            {{ icons.icon("menu", "h-5 w-5") }}
+          </button>
         </div>
-      </nav>
-    </header>
-
-    <main role="main" class="container">
-      <div class="row">
-        <div class="col-md-8">
-          {% block content %}
-          {% endblock content %}
-        </div>
-        <aside class="col-md-4">
-          <div class="content-section py-3 px-4 mb-4">
-            <h3>Our Sidebar</h3>
-            <p class="text-body-secondary">You can put any information here you'd like.</p>
-            <ul class="list-group">
-              <li class="list-group-item">Latest Posts</li>
-              <li class="list-group-item">Announcements</li>
-              <li class="list-group-item">Calendars</li>
-              <li class="list-group-item">etc</li>
-            </ul>
-          </div>
-        </aside>
       </div>
-    </main>
 
-    <footer class="mt-auto py-3 bg-body-tertiary border-top">
-      <div class="container text-center">
-        <p class="text-body-secondary mb-0">
-          © <span id="year"></span> Corey Schafer
-        </p>
+      <div id="mobile-menu" class="hidden border-t border-base-content/5 bg-base-100 px-4 pb-4 pt-2 lg:hidden">
+        <nav class="flex flex-col gap-1" aria-label="Mobile">
+          <a href="{{ url_for('home') }}#features" class="btn btn-ghost justify-start">Features</a>
+          <a href="{{ url_for('home') }}#how-it-works" class="btn btn-ghost justify-start">How it works</a>
+          <a href="{{ url_for('home') }}#security" class="btn btn-ghost justify-start">Security</a>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-ghost justify-start" data-auth-only>Dashboard</a>
+          <div class="mt-2 grid grid-cols-2 gap-2" data-guest-only>
+            <a href="{{ url_for('login') }}" class="btn btn-outline">Log in</a>
+            <a href="{{ url_for('register') }}" class="btn btn-primary">Sign up</a>
+          </div>
+        </nav>
+      </div>
+    </header>
+    {% endblock %}
+
+    {% block page_content %}
+    <main class="min-h-[60vh]">
+      {% block content %}{% endblock %}
+    </main>
+    {% endblock %}
+
+    {% block footer %}
+    <footer class="border-t border-base-content/5 bg-base-100">
+      <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <img src="{{ url_for('static', path='icons/vivariumiq_mark.svg') }}" alt="" class="h-8 w-8 rounded-lg">
+            <span class="font-display text-base font-bold">Vivarium<span class="text-primary">IQ</span></span>
+          </div>
+          <p class="mt-4 max-w-sm text-sm leading-6 text-base-content/60">
+            Enclosure intelligence for keepers who care about the details. Microclimate, movement and hardware health, together in one calm dashboard.
+          </p>
+        </div>
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-base-content/45">Product</h2>
+          <ul class="mt-4 space-y-2.5 text-sm text-base-content/65">
+            <li><a class="link link-hover" href="{{ url_for('home') }}#features">Features</a></li>
+            <li><a class="link link-hover" href="{{ url_for('home') }}#how-it-works">How it works</a></li>
+            <li><a class="link link-hover" href="{{ url_for('register') }}">Create account</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-[0.14em] text-base-content/45">Developers</h2>
+          <ul class="mt-4 space-y-2.5 text-sm text-base-content/65">
+            <li><a class="link link-hover" href="{{ url_for('swagger_ui_html') }}">API reference</a></li>
+            <li><a class="link link-hover" href="{{ url_for('login') }}">Sign in</a></li>
+            <li><a class="link link-hover" href="{{ url_for('home') }}#security">Security</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-base-content/5">
+        <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-base-content/45 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>© <span data-current-year>2026</span> VivariumIQ. Built for better husbandry.</p>
+          <p>Telemetry over MQTT · API by FastAPI</p>
+        </div>
       </div>
     </footer>
+    {% endblock %}
 
-    <!-- Set the current year in the footer -->
-    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+    <div class="toast-root" id="toast-root" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-            crossorigin="anonymous"></script>
-
-    <!-- Dark Mode Toggle -->
-    <script>
-      const setTheme = (theme) => {
-        if (theme === 'auto') {
-          document.documentElement.setAttribute('data-bs-theme', 
-            window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        } else {
-          document.documentElement.setAttribute('data-bs-theme', theme);
-        }
-        localStorage.setItem('theme', theme);
-        
-        // Update button text
-        const themeText = { light: '🌝 Light', dark: '🌚 Dark', auto: '🌗 Auto' };
-        document.getElementById('bd-theme-text').textContent = themeText[theme];
-      };
-
-      // Set theme on click
-      document.querySelectorAll('[data-bs-theme-value]').forEach(button => {
-        button.addEventListener('click', () => setTheme(button.getAttribute('data-bs-theme-value')));
-      });
-
-      // Initialize
-      setTheme(localStorage.getItem('theme') || 'auto');
-    </script>
+    <script src="{{ url_for('static', path='js/site.js') }}" defer></script>
+    {% block scripts %}{% endblock %}
   </body>
 </html>
-
-
