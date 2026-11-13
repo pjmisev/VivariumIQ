@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
-templates.env.globals["asset_version"] = "2026-11-13-3"
+templates.env.globals["asset_version"] = "2026-11-13-4"
 
 
 @app.middleware("http")

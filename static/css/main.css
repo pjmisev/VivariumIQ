@@ -404,6 +404,23 @@ textarea {
   font-weight: 450;
 }
 
+/* Put the focus ring around the whole field box, not the bare inner control.
+   daisyUI renders text fields as a `<label class="input">` wrapper with the real
+   <input> inside; without this the global :focus-visible ring paints only the
+   inner element, which reads as a square floating inside the rounded field. */
+.input > input,
+.input > textarea,
+.input > select,
+.select > select {
+  outline: none;
+}
+
+.input:focus-within,
+.select:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .card {
   border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
 }
