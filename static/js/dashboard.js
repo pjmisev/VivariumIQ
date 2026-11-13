@@ -397,7 +397,7 @@
     container.innerHTML = readings
       .slice(0, 6)
       .map((reading) => `
-        <div class="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-base-content/[0.03]">
+        <div class="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-base-200/50">
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
           </span>

@@ -86,6 +86,9 @@
     const node = state.node;
     if (!node) return;
     document.title = `${node.node_name} · VivariumIQ`;
+    document.querySelectorAll("[data-page-title]").forEach((element) => {
+      element.textContent = node.node_name;
+    });
     document.querySelectorAll("[data-node-name]").forEach((element) => {
       element.textContent = node.node_name;
     });

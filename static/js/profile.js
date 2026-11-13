@@ -10,7 +10,8 @@
     try {
       const payload = token.split(".")[1];
       const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-      const decoded = JSON.parse(atob(normalized));
+      const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+      const decoded = JSON.parse(atob(padded));
       return decoded.exp ? new Date(decoded.exp * 1000).toISOString() : null;
     } catch (_) {
       return null;

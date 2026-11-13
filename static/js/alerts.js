@@ -43,6 +43,7 @@
     document.querySelectorAll('[data-alert-stat="triggered"]').forEach((element) => {
       element.textContent = API.formatInteger(triggered);
     });
+    App.setAlertCount(armed.length);
   }
 
   function render() {

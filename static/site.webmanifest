@@ -4,8 +4,8 @@
   "description": "Your remote monitoring and behavioral tracking system designed for exotic pet enclosures.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#527c9f",
+  "background_color": "#f7f9fb",
+  "theme_color": "#3f6f91",
   "icons": [
     {
       "src": "/static/icons/vivariumiq_icon_192.png",

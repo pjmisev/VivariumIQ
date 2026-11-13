@@ -445,3 +445,32 @@ textarea {
 .viq-auth-hidden {
   display: none !important;
 }
+
+/* ---------- Non-standard daisyUI colour opacity steps ----------
+   daisyUI ships 5/10/20/.../90 modifiers. These match the few extra
+   steps used by the dashboard so the design stays consistent even
+   without a Tailwind build step. */
+
+.bg-base-content\/25 { background-color: color-mix(in oklch, var(--color-base-content) 25%, transparent); }
+.bg-error\/12 { background-color: color-mix(in oklch, var(--color-error) 12%, transparent); }
+.bg-primary\/12 { background-color: color-mix(in oklch, var(--color-primary) 12%, transparent); }
+.bg-primary\/15 { background-color: color-mix(in oklch, var(--color-primary) 15%, transparent); }
+.bg-secondary\/15 { background-color: color-mix(in oklch, var(--color-secondary) 15%, transparent); }
+.bg-success\/12 { background-color: color-mix(in oklch, var(--color-success) 12%, transparent); }
+.bg-warning\/15 { background-color: color-mix(in oklch, var(--color-warning) 15%, transparent); }
+
+.border-base-content\/7 { border-color: color-mix(in oklch, var(--color-base-content) 7%, transparent); }
+.border-base-content\/8 { border-color: color-mix(in oklch, var(--color-base-content) 8%, transparent); }
+.border-base-content\/12 { border-color: color-mix(in oklch, var(--color-base-content) 12%, transparent); }
+.border-error\/15 { border-color: color-mix(in oklch, var(--color-error) 15%, transparent); }
+.border-primary\/15 { border-color: color-mix(in oklch, var(--color-primary) 15%, transparent); }
+.border-success\/15 { border-color: color-mix(in oklch, var(--color-success) 15%, transparent); }
+.border-warning\/25 { border-color: color-mix(in oklch, var(--color-warning) 25%, transparent); }
+
+.text-base-content\/35 { color: color-mix(in oklch, var(--color-base-content) 35%, transparent); }
+.text-base-content\/45 { color: color-mix(in oklch, var(--color-base-content) 45%, transparent); }
+.text-base-content\/55 { color: color-mix(in oklch, var(--color-base-content) 55%, transparent); }
+.text-base-content\/65 { color: color-mix(in oklch, var(--color-base-content) 65%, transparent); }
+.text-base-content\/75 { color: color-mix(in oklch, var(--color-base-content) 75%, transparent); }
+.text-primary\/25 { color: color-mix(in oklch, var(--color-primary) 25%, transparent); }
+.text-primary\/55 { color: color-mix(in oklch, var(--color-primary) 55%, transparent); }
