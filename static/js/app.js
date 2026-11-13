@@ -39,7 +39,7 @@
   async function init() {
     if (state.promise) return state.promise;
     state.promise = (async () => {
-      if (!API.getToken()) {
+      if (!API.getToken() && !API.isDemo()) {
         const next = encodeURIComponent(window.location.pathname + window.location.search);
         window.location.replace(`/login?next=${next}`);
         return null;
@@ -99,11 +99,31 @@
     });
   }
 
+  function clearDemoState() {
+    try {
+      sessionStorage.removeItem("viq_demo_state");
+    } catch (_) {}
+  }
+
   function initLogout() {
     document.querySelectorAll("[data-logout]").forEach((button) => {
       button.addEventListener("click", () => {
+        if (API.isDemo()) {
+          clearDemoState();
+          window.location.replace("/demo/exit");
+          return;
+        }
         API.clearSession();
         window.location.replace("/");
+      });
+    });
+  }
+
+  function initDemoExit() {
+    document.querySelectorAll("[data-demo-exit]").forEach((button) => {
+      button.addEventListener("click", () => {
+        clearDemoState();
+        window.location.assign("/demo/exit");
       });
     });
   }
@@ -111,6 +131,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     initSidebar();
     initLogout();
+    initDemoExit();
     if (document.body.dataset.auth === "required") {
       init();
     }

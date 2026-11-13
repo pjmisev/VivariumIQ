@@ -126,6 +126,11 @@
         const live = isLive(node);
         const status = API.statusMeta(live ? "active" : "inactive");
         const favourite = state.favourites.has(node.node_id);
+        const targetState = API.evaluateTargets(node.targets, latest);
+        const targetLabel = !targetState.configured
+          ? "No targets"
+          : (node.targets && node.targets.preset_name ? node.targets.preset_name : "Custom targets");
+        const targetBadgeClass = targetState.tone === "success" ? "badge-success" : targetState.tone === "warning" ? "badge-warning" : "badge-ghost";
         const temperatures = (state.grouped.get(node.node_id) || [])
           .slice(0, 24)
           .reverse()
@@ -144,6 +149,7 @@
                   <p class="mt-1 flex items-center gap-1 truncate text-[11px] text-base-content/45">
                     ${node.location_name ? API.escapeHtml(node.location_name) : "No location set"}
                   </p>
+                  <p class="mt-0.5 truncate text-[10px] text-base-content/40">${API.escapeHtml(targetLabel)}</p>
                 </div>
               </div>
 
@@ -165,7 +171,10 @@
               <div class="mt-3 text-primary/55">${sparkline(temperatures)}</div>
 
               <div class="mt-3 flex items-center justify-between gap-2 border-t border-base-content/7 pt-3">
-                <span class="badge badge-xs ${healthClass}">${health.label}</span>
+                <div class="flex items-center gap-1.5">
+                  <span class="badge badge-xs ${targetBadgeClass}">${targetState.label}</span>
+                  <span class="badge badge-xs ${healthClass}">${health.label}</span>
+                </div>
                 <span class="text-[10px] text-base-content/40">Seen ${API.timeAgo(node.last_seen)}</span>
               </div>
             </a>
@@ -256,10 +265,12 @@
     const modal = document.getElementById("node-modal");
     const form = document.getElementById("node-form");
     if (!modal || !form) return;
+    const fieldset = form.querySelector("[data-target-fieldset]");
 
     const open = () => {
       form.reset();
       clearFormError();
+      if (fieldset) Targets.setTargets(fieldset, null);
       modal.showModal();
       window.setTimeout(() => document.getElementById("node-name")?.focus(), 80);
     };
@@ -287,11 +298,18 @@
         return;
       }
 
+      const targets = fieldset ? Targets.getTargets(fieldset) : null;
+      if (targets === false) {
+        showFormError(Targets.lastError || "Check the environment target ranges and try again.");
+        return;
+      }
+
       const body = {
         node_name: document.getElementById("node-name").value.trim(),
         location_name: document.getElementById("node-location").value.trim() || null,
         latitude,
         longitude,
+        targets,
       };
       const submit = document.getElementById("node-submit");
       API.setButtonLoading(submit, true, "Creating…");
@@ -313,6 +331,8 @@
     const user = await App.init();
     if (!user) return;
     state.user = user;
+    const targetFieldset = document.querySelector("#node-form [data-target-fieldset]");
+    if (targetFieldset) Targets.init(targetFieldset);
     const openModal = initModal();
     await load();
 

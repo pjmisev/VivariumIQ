@@ -16,6 +16,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 60 * 24
 
+DEMO_COOKIE_NAME = "viq_demo"
+DEMO_TOKEN_EXPIRE_HOURS = 8
+
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
@@ -34,6 +37,22 @@ def create_access_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user_id), "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_demo_token() -> str:
+    expire = datetime.now(timezone.utc) + timedelta(hours=DEMO_TOKEN_EXPIRE_HOURS)
+    payload = {"demo": True, "exp": expire}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def is_demo_token(token: str | None) -> bool:
+    if not token:
+        return False
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.InvalidTokenError:
+        return False
+    return payload.get("demo") is True
 
 
 def get_current_user(

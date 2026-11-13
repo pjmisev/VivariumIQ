@@ -254,7 +254,7 @@
     return `<svg viewBox="0 0 120 32" class="h-8 w-full" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points.join(" ")}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
 
-  function renderNodes(nodes, grouped, favourites) {
+  function renderNodes(nodes, grouped, favourites, targetStates) {
     const container = document.getElementById("dashboard-nodes");
     const empty = document.getElementById("dashboard-nodes-empty");
     if (!container) return;
@@ -279,6 +279,11 @@
           .reverse()
           .map((reading) => reading.temperature);
         const favourite = favourites.has(node.node_id);
+        const targetState = (targetStates && targetStates.get(node.node_id)) || API.evaluateTargets(node.targets, latest);
+        const targetLabel = !targetState.configured
+          ? "No targets"
+          : (node.targets && node.targets.preset_name ? node.targets.preset_name : "Custom targets");
+        const targetBadgeClass = targetState.tone === "success" ? "badge-success" : targetState.tone === "warning" ? "badge-warning" : "badge-ghost";
         return `
           <article class="card card-lift relative overflow-hidden bg-base-100">
             <a href="/app/nodes/${node.node_id}" class="block p-5">
@@ -291,6 +296,7 @@
                 <p class="mt-1 flex items-center gap-1 truncate text-[11px] text-base-content/45">
                   ${node.location_name ? API.escapeHtml(node.location_name) : "No location set"}
                 </p>
+                <p class="mt-0.5 truncate text-[10px] text-base-content/40">${API.escapeHtml(targetLabel)}</p>
               </div>
               <div class="mt-4 grid grid-cols-3 gap-2">
                 <div class="rounded-xl bg-base-200/70 px-2.5 py-2">
@@ -307,6 +313,9 @@
                 </div>
               </div>
               <div class="mt-3 text-primary/60">${sparkline(temperatures)}</div>
+              <div class="mt-3 flex items-center gap-1.5 border-t border-base-content/7 pt-3">
+                <span class="badge badge-xs ${targetBadgeClass}">${targetState.label}</span>
+              </div>
               <div class="mt-2 flex items-center justify-between text-[10px] text-base-content/40">
                 <span class="flex items-center gap-1">Last seen ${API.timeAgo(node.last_seen)}</span>
                 <span class="font-semibold text-primary">Open →</span>
@@ -448,6 +457,10 @@
 
       state.favouriteIds = new Set(favourites.map((favourite) => favourite.node_id));
       const grouped = groupByNode(readings);
+      const targetStates = new Map();
+      nodes.forEach((node) => {
+        targetStates.set(node.node_id, API.evaluateTargets(node.targets, latestFor(grouped, node.node_id)));
+      });
       const liveCount = nodes.filter(isLive).length;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -460,16 +473,62 @@
         .map((alert) => ({ alert, reading: latestFor(grouped, alert.node_id) }))
         .filter(({ alert, reading }) => API.evaluateAlert(alert, reading));
 
+      const configuredStates = Array.from(targetStates.values()).filter((item) => item.configured);
+      const inRangeCount = configuredStates.filter((item) => item.tone === "success").length;
+      const configuredCount = configuredStates.length;
+
       setStat("nodes", API.formatInteger(nodes.length), nodes.length ? `${nodes.length} registered` : "Add your first node");
       setStat("live", API.formatInteger(liveCount), `${liveCount} of ${nodes.length} reporting`);
-      setStat("motion", API.formatInteger(todayMotion), "PIR events since midnight");
+      setStat("targets", API.formatInteger(inRangeCount), configuredCount ? `${configuredCount} with target ranges` : "No target ranges");
       setStat("alerts", API.formatInteger(enabledAlerts.length), `${alerts.length} total configured`);
       App.setAlertCount(enabledAlerts.length);
+
+      const liveNodes = nodes.filter(isLive);
+      const liveOutOfRange = liveNodes.filter((node) => {
+        const item = targetStates.get(node.node_id);
+        return item && item.configured && item.out > 0;
+      });
+      const liveMissingTargets = liveNodes.filter((node) => {
+        const item = targetStates.get(node.node_id);
+        return !item || !item.configured;
+      });
+      const liveWaitingForData = liveNodes.filter((node) => {
+        const item = targetStates.get(node.node_id);
+        return item && item.configured && item.tone === "warning" && item.out === 0;
+      });
+      const liveInRange = liveNodes.filter((node) => {
+        const item = targetStates.get(node.node_id);
+        return item && item.configured && item.tone === "success";
+      }).length;
 
       if (!nodes.length) {
         setHealth("neutral", "No enclosures registered yet", "Add your first Raspberry Pi node to start collecting readings.", "Setup needed");
       } else if (!liveCount) {
         setHealth("warning", "Your nodes are quiet", "No readings have arrived in the last 15 minutes. Check the node power and Wi-Fi.", "No live nodes");
+      } else if (liveOutOfRange.length) {
+        const node = liveOutOfRange[0];
+        const item = targetStates.get(node.node_id);
+        const metric = item.metrics.find((entry) => entry.status === "low" || entry.status === "high") || item.metrics[0];
+        setHealth(
+          "warning",
+          `${liveOutOfRange.length} enclosure${liveOutOfRange.length === 1 ? "" : "s"} outside target`,
+          `${node.node_name}: ${metric.label.toLowerCase()} is ${API.formatNumber(metric.value, metric.digits)}${metric.unit} (target ${API.targetRangeLabel(metric)}).`,
+          `${liveOutOfRange.length} need attention`
+        );
+      } else if (liveWaitingForData.length) {
+        setHealth(
+          "warning",
+          "Waiting for target data",
+          `${liveWaitingForData.length} enclosure${liveWaitingForData.length === 1 ? "" : "s"} have target ranges but no complete latest reading yet.`,
+          "Waiting"
+        );
+      } else if (liveMissingTargets.length) {
+        setHealth(
+          "warning",
+          "Targets need setting",
+          `${liveMissingTargets.length} enclosure${liveMissingTargets.length === 1 ? "" : "s"} have no complete target range. Choose a species preset or custom values to track their health.`,
+          "Setup needed"
+        );
       } else if (triggered.length) {
         const { alert, reading } = triggered[0];
         const measurement = API.MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
@@ -481,12 +540,12 @@
           `${triggered.length} alert${triggered.length === 1 ? "" : "s"}`
         );
       } else {
-        setHealth("success", "Everything looks calm", `${liveCount} of ${nodes.length} enclosures reporting. No thresholds crossed.`, "Optimal");
+        setHealth("success", "All enclosures in target", `${liveInRange} of ${liveCount} enclosures within their target ranges.`, "Optimal");
       }
 
       renderSnapshot(nodes, grouped, readings, todayMotion);
       renderChart(readings);
-      renderNodes(nodes, grouped, state.favouriteIds);
+      renderNodes(nodes, grouped, state.favouriteIds, targetStates);
       renderAlerts(alerts, nodes, grouped);
       renderActivity(readings, nodes);
 

@@ -13,6 +13,10 @@
     }
   }
 
+  function isDemo() {
+    return Boolean(document.body && document.body.dataset.demo === "true");
+  }
+
   function getToken() {
     try {
       return localStorage.getItem(TOKEN_KEY);
@@ -32,16 +36,20 @@
 
   function setSession(token, user) {
     try {
-      if (token) localStorage.setItem(TOKEN_KEY, token);
-      if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (!isDemo()) {
+        if (token) localStorage.setItem(TOKEN_KEY, token);
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+      }
     } catch (_) {}
     if (window.VIQ && window.VIQ.setAuthVisibility) window.VIQ.setAuthVisibility();
   }
 
   function setUser(user) {
     try {
-      if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-      else localStorage.removeItem(USER_KEY);
+      if (!isDemo()) {
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+        else localStorage.removeItem(USER_KEY);
+      }
     } catch (_) {}
   }
 
@@ -74,6 +82,79 @@
     pressure: { label: "Pressure", unit: " hPa", digits: 0, color: "#0ea5e9", bg: "rgba(14, 165, 233, 0.1)" },
   });
 
+  const TARGET_METRICS = Object.freeze([
+    { key: "temperature", label: "Temperature", short: "Temp", unit: "°C", digits: 1, minKey: "temperature_min", maxKey: "temperature_max" },
+    { key: "humidity", label: "Humidity", short: "Humidity", unit: "%", digits: 0, minKey: "humidity_min", maxKey: "humidity_max" },
+    { key: "pressure", label: "Pressure", short: "Pressure", unit: "hPa", digits: 0, minKey: "pressure_min", maxKey: "pressure_max" },
+  ]);
+
+  function toTargetNumber(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function formatTargetValue(value, digits) {
+    const number = toTargetNumber(value);
+    if (number === null) return "—";
+    const places = Math.max(0, Math.min(6, digits || 0));
+    return number
+      .toFixed(places)
+      .replace(/(\.\d*?)0+$/, "$1")
+      .replace(/\.$/, "");
+  }
+
+  function evaluateTargets(targets, reading) {
+    const metrics = TARGET_METRICS.map((metric) => {
+      const min = targets ? toTargetNumber(targets[metric.minKey]) : null;
+      const max = targets ? toTargetNumber(targets[metric.maxKey]) : null;
+      const value = reading ? toTargetNumber(reading[metric.key]) : null;
+      const configured = min !== null && max !== null;
+      let status;
+      if (!configured) status = "unconfigured";
+      else if (value === null) status = "unknown";
+      else if (value < min) status = "low";
+      else if (value > max) status = "high";
+      else status = "ok";
+      return {
+        key: metric.key,
+        label: metric.label,
+        short: metric.short,
+        unit: metric.unit,
+        digits: metric.digits,
+        min,
+        max,
+        value,
+        status,
+      };
+    });
+
+    const configuredMetrics = metrics.filter((metric) => metric.status !== "unconfigured");
+    const total = configuredMetrics.length;
+    const inRange = configuredMetrics.filter((metric) => metric.status === "ok").length;
+    const out = configuredMetrics.filter((metric) => metric.status === "low" || metric.status === "high").length;
+
+    if (!total) {
+      return { configured: false, tone: "unconfigured", label: "No targets", inRange: 0, total: 0, out: 0, metrics };
+    }
+    if (out > 0) {
+      return { configured: true, tone: "warning", label: `${out} out of range`, inRange, total, out, metrics };
+    }
+    if (inRange === total) {
+      return { configured: true, tone: "success", label: "In target", inRange, total, out: 0, metrics };
+    }
+    return { configured: true, tone: "warning", label: "Waiting for data", inRange, total, out: 0, metrics };
+  }
+
+  function targetRangeLabel(metric) {
+    if (!metric) return "No range";
+    const min = toTargetNumber(metric.min);
+    const max = toTargetNumber(metric.max);
+    if (min === null || max === null) return "No range";
+    const digits = metric.digits === undefined ? 0 : metric.digits;
+    return `${formatTargetValue(min, digits)}–${formatTargetValue(max, digits)} ${metric.unit}`;
+  }
+
   function evaluateAlert(alert, reading) {
     if (!alert || !alert.enabled || !reading) return false;
     const rawValue = reading[alert.measurement_type];
@@ -93,6 +174,9 @@
 
   async function request(path, options) {
     const config = options || {};
+    if (isDemo() && window.DemoMode) {
+      return window.DemoMode.request(path, config);
+    }
     const method = config.method || "GET";
     const auth = config.auth !== false;
     const headers = Object.assign({ Accept: "application/json" }, config.headers || {});
@@ -265,8 +349,12 @@
     USER_KEY,
     ApiError,
     MEASUREMENTS,
+    TARGET_METRICS,
     evaluateAlert,
+    evaluateTargets,
+    targetRangeLabel,
     request,
+    isDemo,
     getToken,
     getStoredUser,
     setSession,

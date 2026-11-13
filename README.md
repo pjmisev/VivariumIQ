@@ -105,6 +105,10 @@ The web interface is server-rendered with Jinja2 and progressively enhanced with
 
 The dashboard talks to the existing REST API with the JWT stored in `localStorage`, so every write is still authorised by the backend. If a token expires, the client clears the session and redirects to `/login` with a return path. The light/dark theme is remembered per browser.
 
+### Demo mode
+
+Set `DEMO_MODE_KEY` to a private value to let the host show the dashboard without a real account. Visiting `/demo?key=<value>` issues a signed 8-hour HttpOnly `viq_demo` cookie and redirects to `/app`, where readings, nodes and alerts are generated locally by `static/js/demo-data.js` and no changes touch the database. A banner in the app and an **Exit demo** button (which clears the cookie via `/demo/exit`) make the mode obvious. Leaving `DEMO_MODE_KEY` unset keeps `/demo` returning 404.
+
 ---
 
 ## Security Implementation

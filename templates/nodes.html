@@ -1,5 +1,6 @@
 {% extends "app_layout.html" %}
 {% import "macros/icons.html" as icons %}
+{% import "macros/targets.html" as targets %}
 
 {% block app_content %}
 <div class="mx-auto max-w-7xl">
@@ -83,7 +84,7 @@
 </div>
 
 <dialog id="node-modal" class="modal">
-  <div class="modal-box max-w-lg">
+  <div class="modal-box max-w-2xl">
     <form method="dialog">
       <button class="btn btn-ghost btn-circle btn-sm absolute right-3 top-3" aria-label="Close">{{ icons.icon("x", "h-4 w-4") }}</button>
     </form>
@@ -121,6 +122,7 @@
       <p class="rounded-xl bg-base-200/70 px-3 py-2.5 text-[11px] leading-5 text-base-content/50">
         Coordinates are optional. They are useful later for day-length and regional context.
       </p>
+      {{ targets.target_fieldset("node", preset_groups) }}
       <div class="modal-action mt-2">
         <button type="button" class="btn btn-ghost btn-sm" data-close-node-modal>Cancel</button>
         <button id="node-submit" type="submit" class="btn btn-primary btn-sm gap-2">
@@ -135,5 +137,6 @@
 {% endblock %}
 
 {% block page_scripts %}
+<script src="{{ url_for('static', path='js/targets.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/nodes.js') }}" defer></script>
 {% endblock %}

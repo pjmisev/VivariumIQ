@@ -63,6 +63,19 @@
         </div>
       </section>
 
+      {% if request.state.demo_mode %}
+      <section class="card bg-base-100">
+        <div class="card-body p-5 sm:p-6">
+          <div class="flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/12 text-warning">{{ icons.icon("cpu", "h-5 w-5") }}</span>
+            <div>
+              <h3 class="font-display text-base font-bold">API access</h3>
+              <p class="mt-1 text-xs leading-5 text-base-content/50">API token access is disabled while demo mode is active. Exit demo mode from the banner to use your real credentials.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {% else %}
       <section id="api-access" class="card bg-base-100">
         <div class="card-body p-5 sm:p-6">
           <div class="flex items-start gap-3">
@@ -93,6 +106,7 @@
           <p class="mt-3 text-[11px] leading-5 text-base-content/40">The node's MQTT payload must include the same token as its <code class="rounded bg-base-200 px-1 py-0.5 text-[10px]">token</code> field. The broker verifies ownership before storing any reading.</p>
         </div>
       </section>
+      {% endif %}
     </div>
 
     <div class="space-y-6">

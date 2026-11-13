@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% import "macros/icons.html" as icons %}
 
-{% block body_attrs %}data-page="{{ page|default('') }}" data-auth="required" data-node-id="{{ node_id|default('') }}"{% endblock %}
+{% block body_attrs %}data-page="{{ page|default('') }}" data-auth="required" data-node-id="{{ node_id|default('') }}" data-demo="{{ 'true' if request.state.demo_mode else 'false' }}"{% endblock %}
 {% block page_content %}{% endblock %}
 
 {% block nav %}
@@ -119,6 +119,15 @@
     </header>
 
     <main class="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      {% if request.state.demo_mode %}
+      <div class="mb-6 flex flex-col gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-base-content/80 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-2">
+          <span class="mt-0.5 shrink-0 text-warning">{{ icons.icon("alert-triangle", "h-4 w-4") }}</span>
+          <p>Demo mode. These readings, nodes and alerts are generated locally; changes do not touch the database.</p>
+        </div>
+        <button type="button" class="btn btn-warning btn-sm self-start sm:self-auto" data-demo-exit>Exit demo</button>
+      </div>
+      {% endif %}
       {% block app_content %}{% endblock %}
     </main>
   </div>
@@ -129,6 +138,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', path='vendor/chart.umd.min.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/demo-data.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/api.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
 {% block page_scripts %}{% endblock %}

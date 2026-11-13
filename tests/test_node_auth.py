@@ -181,6 +181,27 @@ def test_readings_support_scoping_and_limit(client):
     assert client.get("/api/readings?limit=0").status_code == 422
 
 
+def test_demo_mode_activation(client, monkeypatch):
+    monkeypatch.delenv("DEMO_MODE_KEY", raising=False)
+    assert client.get("/demo?key=anything", follow_redirects=False).status_code == 404
+
+    monkeypatch.setenv("DEMO_MODE_KEY", "demo-secret")
+    assert client.get("/demo?key=wrong", follow_redirects=False).status_code == 404
+
+    response = client.get("/demo?key=demo-secret", follow_redirects=False)
+    assert response.status_code == 303
+    assert "viq_demo" in response.cookies
+
+    response = client.get("/app")
+    assert 'data-demo="true"' in response.text
+
+    response = client.get("/demo/exit", follow_redirects=False)
+    assert response.status_code == 303
+
+    response = client.get("/app")
+    assert 'data-demo="false"' in response.text
+
+
 def test_diagnostics_support_scoping_and_limit(client):
     token = register_and_login(client)
     headers = {"Authorization": f"Bearer {token}"}
@@ -213,3 +234,74 @@ def test_diagnostics_support_scoping_and_limit(client):
     assert len(response.json()) == 3
 
     assert client.get("/api/diagnostics?limit=0").status_code == 422
+
+
+def test_node_targets_from_preset_and_crud(client):
+    token = register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/api/node",
+        json={"node_name": "Beardie", "targets": {"preset_key": "bearded_dragon"}},
+        headers=headers,
+    )
+    assert response.status_code == 201
+    body = response.json()
+    node_id = body["node_id"]
+    targets = body["targets"]
+    assert targets is not None
+    assert targets["preset_key"] == "bearded_dragon"
+    assert targets["preset_name"] == "Bearded Dragon"
+    assert float(targets["temperature_min"]) == 28
+    assert float(targets["temperature_max"]) == 38
+    assert float(targets["humidity_min"]) == 30
+    assert float(targets["humidity_max"]) == 50
+    assert float(targets["pressure_min"]) == 990
+    assert float(targets["pressure_max"]) == 1030
+
+    listed = client.get("/api/nodes").json()
+    listed_node = next(item for item in listed if item["node_id"] == node_id)
+    assert listed_node["targets"]["preset_name"] == "Bearded Dragon"
+
+    response = client.put(
+        f"/api/node/{node_id}/targets",
+        json={
+            "temperature_min": 26,
+            "temperature_max": 30,
+            "humidity_min": 40,
+            "humidity_max": 55,
+            "pressure_min": 995,
+            "pressure_max": 1025,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert float(updated["temperature_min"]) == 26
+    assert float(updated["temperature_max"]) == 30
+    assert float(updated["pressure_max"]) == 1025
+
+    persisted = client.get(f"/api/node/{node_id}/targets").json()
+    assert float(persisted["temperature_min"]) == 26
+
+    response = client.delete(f"/api/node/{node_id}/targets", headers=headers)
+    assert response.status_code == 204
+    assert client.get(f"/api/node/{node_id}/targets").status_code == 404
+    assert client.get(f"/api/node/{node_id}").json()["targets"] is None
+
+
+def test_species_presets_endpoint(client):
+    response = client.get("/api/species-presets")
+    assert response.status_code == 200
+    presets = response.json()
+    assert len(presets) >= 45
+    keys = {preset["key"] for preset in presets}
+    assert {"crested_gecko", "bearded_dragon", "pacman_frog"} <= keys
+
+    bearded = next(preset for preset in presets if preset["key"] == "bearded_dragon")
+    assert bearded["name"] == "Bearded Dragon"
+    assert bearded["group"] == "Desert reptiles"
+    assert bearded["temperature_min"] == 28
+    assert bearded["temperature_max"] == 38
+    assert bearded["pressure_min"] == 990
+    assert bearded["pressure_max"] == 1030

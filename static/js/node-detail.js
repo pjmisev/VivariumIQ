@@ -76,6 +76,25 @@
     return map[tone] || map.neutral;
   }
 
+  function targetLabel(node) {
+    const targets = node && node.targets;
+    if (!targets) return "No targets";
+    const configured = ["temperature_min", "temperature_max", "humidity_min", "humidity_max", "pressure_min", "pressure_max"]
+      .some((key) => targets[key] !== null && targets[key] !== undefined && targets[key] !== "");
+    if (!configured) return "No targets";
+    return targets.preset_name ? targets.preset_name : "Custom targets";
+  }
+
+  function targetStatusMeta(status) {
+    switch (status) {
+      case "ok": return { label: "In range", badge: "badge-success" };
+      case "low": return { label: "Low", badge: "badge-warning" };
+      case "high": return { label: "High", badge: "badge-warning" };
+      case "unknown": return { label: "No data", badge: "badge-ghost" };
+      default: return { label: "Not set", badge: "badge-ghost" };
+    }
+  }
+
   function renderHeader() {
     const node = state.node;
     if (!node) return;
@@ -97,6 +116,9 @@
     });
     document.querySelectorAll("[data-delete-node-name]").forEach((element) => {
       element.textContent = node.node_name;
+    });
+    document.querySelectorAll("[data-node-species]").forEach((element) => {
+      element.textContent = targetLabel(node);
     });
 
     const status = document.getElementById("node-status");
@@ -193,6 +215,76 @@
       badge.className = `badge badge-sm self-start sm:self-auto ${tone === "success" ? "badge-success" : tone === "warning" ? "badge-warning" : "badge-ghost"}`;
       badge.textContent = label;
     }
+  }
+
+  function renderTargetHealth() {
+    const node = state.node;
+    const banner = document.getElementById("target-health");
+    const icon = document.getElementById("target-health-icon");
+    const title = document.getElementById("target-health-title");
+    const message = document.getElementById("target-health-message");
+    const badge = document.getElementById("target-health-badge");
+    const chips = document.getElementById("target-chips");
+    if (!banner || !node) return;
+
+    const evaluation = API.evaluateTargets(node.targets, latestReading());
+    const outMetrics = evaluation.metrics.filter((metric) => metric.status === "low" || metric.status === "high");
+
+    let tone = "neutral";
+    let heading = "Targets not set";
+    let body = "Choose a species preset or custom ranges to track environmental health.";
+    let label = "Not set";
+
+    if (evaluation.tone === "success") {
+      tone = "success";
+      heading = "Environment in target";
+      body = "Temperature, humidity and pressure are within their target ranges.";
+      label = "Optimal";
+    } else if (evaluation.tone === "warning" && outMetrics.length) {
+      tone = "warning";
+      heading = "Environment outside target";
+      body = outMetrics
+        .map((metric) => `${metric.label} is ${API.formatNumber(metric.value, metric.digits)}${metric.unit} (target ${API.targetRangeLabel(metric)})`)
+        .join(" · ");
+      label = `${outMetrics.length} out of range`;
+    } else if (evaluation.tone === "warning") {
+      tone = "warning";
+      heading = "Waiting for data";
+      body = "Some metrics have no reading yet. Targets will be checked once a sample arrives.";
+      label = "No data";
+    }
+
+    banner.className = `mt-6 rounded-2xl border p-4 sm:p-5 ${
+      tone === "success" ? "border-success/20 bg-success/5" : tone === "warning" ? "border-warning/25 bg-warning/5" : "border-base-content/8 bg-base-100"
+    }`;
+    if (icon) icon.className = `flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconTileClass(tone)}`;
+    if (title) title.textContent = heading;
+    if (message) message.textContent = body;
+    if (badge) {
+      badge.className = `badge badge-sm ${tone === "success" ? "badge-success" : tone === "warning" ? "badge-warning" : "badge-ghost"}`;
+      badge.textContent = label;
+    }
+
+    if (!chips) return;
+    if (!evaluation.configured) {
+      chips.innerHTML = '<p class="rounded-xl border border-dashed border-base-content/12 px-4 py-5 text-center text-xs text-base-content/45 sm:col-span-3">Set a species preset or custom ranges to see per-metric target status.</p>';
+      return;
+    }
+    chips.innerHTML = evaluation.metrics
+      .map((metric) => {
+        const status = targetStatusMeta(metric.status);
+        const value = metric.value === null ? "—" : `${API.formatNumber(metric.value, metric.digits)}${metric.unit}`;
+        return `
+          <div class="rounded-xl border border-base-content/7 bg-base-200/50 p-3">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-[10px] font-medium uppercase tracking-wide text-base-content/40">${metric.label}</p>
+              <span class="badge badge-xs ${status.badge}">${status.label}</span>
+            </div>
+            <p class="mt-1.5 text-lg font-bold tabular">${value}</p>
+            <p class="text-[11px] text-base-content/45">Target ${API.targetRangeLabel(metric)}</p>
+          </div>`;
+      })
+      .join("");
   }
 
   function renderChart() {
@@ -447,6 +539,7 @@
   function renderAll() {
     renderHeader();
     renderMetrics();
+    renderTargetHealth();
     renderHealth();
     renderChart();
     renderReadings();
@@ -557,12 +650,14 @@
     const modal = document.getElementById("edit-node-modal");
     const form = document.getElementById("edit-node-form");
     if (!modal || !form) return;
+    const fieldset = form.querySelector("[data-target-fieldset]");
     const open = () => {
       if (!state.node) return;
       document.getElementById("edit-node-name").value = state.node.node_name || "";
       document.getElementById("edit-node-location").value = state.node.location_name || "";
       document.getElementById("edit-node-latitude").value = state.node.latitude ?? "";
       document.getElementById("edit-node-longitude").value = state.node.longitude ?? "";
+      if (fieldset) Targets.setTargets(fieldset, state.node.targets);
       document.getElementById("edit-node-error").classList.add("hidden");
       modal.showModal();
     };
@@ -586,12 +681,27 @@
         box.classList.remove("hidden");
         return;
       }
+      const targets = fieldset ? Targets.getTargets(fieldset) : null;
+      if (targets === false) {
+        const box = document.getElementById("edit-node-error");
+        document.getElementById("edit-node-error-message").textContent = Targets.lastError || "Check the environment target ranges and try again.";
+        box.classList.remove("hidden");
+        return;
+      }
       const submit = document.getElementById("edit-node-submit");
       API.setButtonLoading(submit, true, "Saving…");
       try {
-        state.node = await API.request(`/api/node/${state.node.node_id}`, { method: "PATCH", body });
+        const updated = await API.request(`/api/node/${state.node.node_id}`, { method: "PATCH", body });
+        let targetResult = null;
+        if (targets) {
+          targetResult = await API.request(`/api/node/${state.node.node_id}/targets`, { method: "PUT", body: targets });
+        } else {
+          await API.request(`/api/node/${state.node.node_id}/targets`, { method: "DELETE" });
+        }
+        state.node = updated;
+        state.node.targets = targetResult;
         modal.close();
-        renderHeader();
+        renderAll();
         API.toast("Enclosure updated.", "success");
       } catch (error) {
         document.getElementById("edit-node-error-message").textContent = error.message || "Could not update the enclosure.";
@@ -664,6 +774,8 @@
     state.user = user;
     initTabs();
     initChartControls();
+    const targetFieldset = document.querySelector("#edit-node-form [data-target-fieldset]");
+    if (targetFieldset) Targets.init(targetFieldset);
     initEditModal();
     initDeleteModal();
     initAlertActions();
