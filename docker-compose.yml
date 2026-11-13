@@ -31,6 +31,7 @@ services:
     build: .
     restart: unless-stopped
     environment:
+      FORWARDED_ALLOW_IPS: "*"
       DATABASE_URL: mysql+pymysql://vivariumiq:${MARIADB_PASSWORD:-vivariumiq}@db:3306/vivariumiq_db
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
       MQTT_BROKER: mqtt
