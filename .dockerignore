@@ -1,0 +1,30 @@
+# Git and editors
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local environment and caches
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.kilo/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
