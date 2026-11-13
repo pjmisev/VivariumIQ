@@ -1,10 +1,19 @@
 (function () {
   "use strict";
 
+  function safeNextTarget(value) {
+    if (!value || !value.startsWith("/")) return null;
+    try {
+      const target = new URL(value, window.location.origin);
+      if (target.origin !== window.location.origin) return null;
+      return target.pathname + target.search + target.hash;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function safeNext() {
-    const value = new URLSearchParams(window.location.search).get("next");
-    if (value && value.startsWith("/") && !value.startsWith("//")) return value;
-    return "/app";
+    return safeNextTarget(new URLSearchParams(window.location.search).get("next")) || "/app";
   }
 
   function showError(message) {
@@ -74,8 +83,8 @@
   }
 
   function preserveNextLink() {
-    const next = new URLSearchParams(window.location.search).get("next");
-    if (!next || !next.startsWith("/") || next.startsWith("//")) return;
+    const next = safeNextTarget(new URLSearchParams(window.location.search).get("next"));
+    if (!next) return;
     document.querySelectorAll('a[href="/login"], a[href="/register"]').forEach((link) => {
       const url = new URL(link.getAttribute("href"), window.location.origin);
       url.searchParams.set("next", next);

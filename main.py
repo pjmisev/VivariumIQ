@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -253,9 +253,27 @@ def validation_exception_handler(request: Request, exception: RequestValidationE
     )
 
 @app.get("/api/diagnostics", response_model=list[DiagnosticResponse])
-def get_diagnostics(db: Annotated[Session, Depends(get_db)]):
-    diagnostics = db.scalars(select(models.NodeDiagnostic)).all()
-    return diagnostics
+def get_diagnostics(
+    db: Annotated[Session, Depends(get_db)],
+    node_id: int | None = None,
+    user_id: int | None = None,
+    limit: int | None = Query(default=None, ge=1, le=5000),
+):
+    query = select(models.NodeDiagnostic)
+    if node_id is not None:
+        query = query.where(models.NodeDiagnostic.node_id == node_id)
+    if user_id is not None:
+        query = query.join(
+            models.Node, models.NodeDiagnostic.node_id == models.Node.node_id
+        ).where(models.Node.user_id == user_id)
+    query = query.order_by(
+        models.NodeDiagnostic.recorded_at.desc(),
+        models.NodeDiagnostic.diagnostic_id.desc(),
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    result = db.execute(query)
+    return result.scalars().all()
 
 @app.post("/api/diagnostics", response_model=DiagnosticResponse, status_code=status.HTTP_201_CREATED)
 def create_diagnostic(diagnostic: DiagnosticCreate, db: Annotated[Session, Depends(get_db)]):
@@ -367,8 +385,26 @@ def node_heartbeat(node_id: int, current_user: Annotated[models.User, Depends(ge
     return node
 
 @app.get("/api/readings", response_model=list[ReadingResponse])
-def get_readings(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.WeatherReading))
+def get_readings(
+    db: Annotated[Session, Depends(get_db)],
+    node_id: int | None = None,
+    user_id: int | None = None,
+    limit: int | None = Query(default=None, ge=1, le=5000),
+):
+    query = select(models.WeatherReading)
+    if node_id is not None:
+        query = query.where(models.WeatherReading.node_id == node_id)
+    if user_id is not None:
+        query = query.join(
+            models.Node, models.WeatherReading.node_id == models.Node.node_id
+        ).where(models.Node.user_id == user_id)
+    query = query.order_by(
+        models.WeatherReading.recorded_at.desc(),
+        models.WeatherReading.reading_id.desc(),
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    result = db.execute(query)
     return result.scalars().all()
 
 @app.get("/api/reading/{reading_id}", response_model=ReadingResponse)

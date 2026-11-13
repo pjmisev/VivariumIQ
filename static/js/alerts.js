@@ -10,30 +10,9 @@
     loading: false,
   };
 
-  const MEASUREMENTS = {
-    temperature: { label: "Temperature", unit: "°C", digits: 1 },
-    humidity: { label: "Humidity", unit: "%", digits: 0 },
-    pressure: { label: "Pressure", unit: " hPa", digits: 0 },
-  };
-
-  function evaluateAlert(alert, reading) {
-    if (!alert.enabled || !reading) return false;
-    const value = Number(reading[alert.measurement_type]);
-    const threshold = Number(alert.threshold_value);
-    if (!Number.isFinite(value) || !Number.isFinite(threshold)) return false;
-    switch (alert.comparison_operator) {
-      case ">": return value > threshold;
-      case "<": return value < threshold;
-      case ">=": return value >= threshold;
-      case "<=": return value <= threshold;
-      case "==": return Math.abs(value - threshold) < 0.001;
-      default: return false;
-    }
-  }
-
   function renderStats() {
     const armed = state.alerts.filter((alert) => alert.enabled);
-    const triggered = armed.filter((alert) => evaluateAlert(alert, state.latest.get(alert.node_id))).length;
+    const triggered = armed.filter((alert) => API.evaluateAlert(alert, state.latest.get(alert.node_id))).length;
     document.querySelectorAll('[data-alert-stat="total"]').forEach((element) => {
       element.textContent = API.formatInteger(state.alerts.length);
     });
@@ -65,10 +44,10 @@
     const nodeNames = new Map(state.nodes.map((node) => [node.node_id, node.node_name]));
     list.innerHTML = state.alerts
       .map((alert) => {
-        const measurement = MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "", digits: 1 };
+        const measurement = API.MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "", digits: 1 };
         const reading = state.latest.get(alert.node_id);
         const latestValue = reading ? reading[alert.measurement_type] : null;
-        const triggered = evaluateAlert(alert, reading);
+        const triggered = API.evaluateAlert(alert, reading);
         const nodeName = nodeNames.get(alert.node_id) || `Node ${alert.node_id}`;
         const statusClass = triggered ? "badge-error" : alert.enabled ? "badge-success" : "badge-ghost";
         const statusLabel = triggered ? "Triggered" : alert.enabled ? "Armed" : "Paused";
@@ -127,7 +106,7 @@
       const [alerts, nodes, readings] = await Promise.all([
         API.request("/api/alerts"),
         API.request("/api/nodes"),
-        API.request("/api/readings"),
+        API.request(`/api/readings?user_id=${state.user.user_id}&limit=1000`),
       ]);
       state.alerts = alerts
         .filter((alert) => alert.user_id === state.user.user_id)
@@ -177,6 +156,8 @@
     form.reset();
     clearError();
     state.editingId = alert ? alert.alert_id : null;
+    const nodeSelect = document.getElementById("alert-node");
+    nodeSelect.disabled = Boolean(alert);
     renderNodeOptions(alert ? alert.node_id : presetNodeId);
     document.getElementById("alert-modal-title").textContent = alert ? "Edit alert" : "New alert";
     document.getElementById("alert-modal-subtitle").textContent = alert ? "Update the threshold or condition." : "Watch a measurement on one enclosure.";

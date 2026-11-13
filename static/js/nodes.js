@@ -212,9 +212,9 @@
     try {
       const [allNodes, allReadings, favourites, diagnostics] = await Promise.all([
         API.request("/api/nodes"),
-        API.request("/api/readings"),
+        API.request(`/api/readings?user_id=${state.user.user_id}&limit=5000`),
         API.request(`/api/user/${state.user.user_id}/favourites`),
-        API.request("/api/diagnostics"),
+        API.request(`/api/diagnostics?user_id=${state.user.user_id}&limit=500`),
       ]);
       state.nodes = allNodes
         .filter((node) => node.user_id === state.user.user_id)

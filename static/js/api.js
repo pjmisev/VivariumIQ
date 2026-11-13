@@ -68,6 +68,29 @@
     return fallback || "Something went wrong. Please try again.";
   }
 
+  const MEASUREMENTS = Object.freeze({
+    temperature: { label: "Temperature", unit: "°C", digits: 1, color: "#527c9f", bg: "rgba(82, 124, 159, 0.12)" },
+    humidity: { label: "Humidity", unit: "%", digits: 0, color: "#84cc16", bg: "rgba(132, 204, 22, 0.1)" },
+    pressure: { label: "Pressure", unit: " hPa", digits: 0, color: "#0ea5e9", bg: "rgba(14, 165, 233, 0.1)" },
+  });
+
+  function evaluateAlert(alert, reading) {
+    if (!alert || !alert.enabled || !reading) return false;
+    const rawValue = reading[alert.measurement_type];
+    if (rawValue === null || rawValue === undefined || rawValue === "") return false;
+    const value = Number(rawValue);
+    const threshold = Number(alert.threshold_value);
+    if (!Number.isFinite(value) || !Number.isFinite(threshold)) return false;
+    switch (alert.comparison_operator) {
+      case ">": return value > threshold;
+      case "<": return value < threshold;
+      case ">=": return value >= threshold;
+      case "<=": return value <= threshold;
+      case "==": return Math.abs(value - threshold) < 0.001;
+      default: return false;
+    }
+  }
+
   async function request(path, options) {
     const config = options || {};
     const method = config.method || "GET";
@@ -117,7 +140,10 @@
     if (!value) return null;
     if (value instanceof Date) return value;
     if (typeof value !== "string") return new Date(value);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T00:00:00Z`);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
     const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
     return new Date(hasZone ? value : `${value}Z`);
   }
@@ -238,6 +264,8 @@
     TOKEN_KEY,
     USER_KEY,
     ApiError,
+    MEASUREMENTS,
+    evaluateAlert,
     request,
     getToken,
     getStoredUser,

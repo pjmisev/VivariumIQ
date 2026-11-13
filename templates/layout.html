@@ -19,8 +19,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Vendored: daisyUI 5.8.0 + @tailwindcss/browser 4.3.5 -->
+    <link href="{{ url_for('static', path='vendor/daisyui.css') }}" rel="stylesheet" type="text/css">
+    <script src="{{ url_for('static', path='vendor/tailwind-browser.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/main.css') }}">
 
     <link rel="icon" href="{{ url_for('static', path='icons/favicon.ico') }}" sizes="any">

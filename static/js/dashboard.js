@@ -11,12 +11,6 @@
   const STAR_OUTLINE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>';
   const STAR_FILLED = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd"/></svg>';
 
-  const MEASUREMENTS = {
-    temperature: { label: "Temperature", unit: "°C", color: "#527c9f" },
-    humidity: { label: "Humidity", unit: "%", color: "#84cc16" },
-    pressure: { label: "Pressure", unit: " hPa", color: "#0ea5e9" },
-  };
-
   function metric(value, unit, digits) {
     if (value === null || value === undefined || value === "") return "—";
     return `${API.formatNumber(value, digits === undefined ? 1 : digits)}${unit}`;
@@ -47,25 +41,12 @@
     const values = nodes
       .map((node) => latestFor(grouped, node.node_id))
       .filter(Boolean)
-      .map((reading) => Number(reading[key]))
+      .map((reading) => reading[key])
+      .filter((value) => value !== null && value !== undefined && value !== "")
+      .map(Number)
       .filter((value) => Number.isFinite(value));
     if (!values.length) return null;
     return values.reduce((sum, value) => sum + value, 0) / values.length;
-  }
-
-  function evaluateAlert(alert, reading) {
-    if (!alert.enabled || !reading) return false;
-    const value = Number(reading[alert.measurement_type]);
-    const threshold = Number(alert.threshold_value);
-    if (!Number.isFinite(value) || !Number.isFinite(threshold)) return false;
-    switch (alert.comparison_operator) {
-      case ">": return value > threshold;
-      case "<": return value < threshold;
-      case ">=": return value >= threshold;
-      case "<=": return value <= threshold;
-      case "==": return Math.abs(value - threshold) < 0.001;
-      default: return false;
-    }
   }
 
   function setHealth(tone, title, message, badge) {
@@ -327,7 +308,7 @@
               </div>
               <div class="mt-3 text-primary/60">${sparkline(temperatures)}</div>
               <div class="mt-2 flex items-center justify-between text-[10px] text-base-content/40">
-                <span class="flex items-center gap-1">${live ? "Last seen" : "Last seen"} ${API.timeAgo(node.last_seen)}</span>
+                <span class="flex items-center gap-1">Last seen ${API.timeAgo(node.last_seen)}</span>
                 <span class="font-semibold text-primary">Open →</span>
               </div>
             </a>
@@ -364,8 +345,8 @@
       .slice(0, 4)
       .map((alert) => {
         const reading = latestFor(grouped, alert.node_id);
-        const triggered = evaluateAlert(alert, reading);
-        const measurement = MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
+        const triggered = API.evaluateAlert(alert, reading);
+        const measurement = API.MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
         const nodeName = nodeNames.get(alert.node_id) || `Node ${alert.node_id}`;
         return `
           <div class="flex items-center gap-3 rounded-xl border border-base-content/7 px-3 py-2.5">
@@ -374,7 +355,7 @@
             </span>
             <div class="min-w-0 flex-1">
               <p class="truncate text-xs font-semibold">${API.escapeHtml(nodeName)}</p>
-              <p class="truncate text-[10px] text-base-content/45">${measurement.label} ${API.escapeHtml(alert.comparison_operator)} ${API.formatNumber(alert.threshold_value, 1)}${measurement.unit}</p>
+              <p class="truncate text-[10px] text-base-content/45">${measurement.label} ${API.escapeHtml(alert.comparison_operator)} ${API.formatNumber(alert.threshold_value, measurement.digits)}${measurement.unit}</p>
             </div>
             <span class="badge badge-xs ${triggered ? "badge-error" : alert.enabled ? "badge-success" : "badge-ghost"}">${triggered ? "Triggered" : alert.enabled ? "Armed" : "Paused"}</span>
           </div>`;
@@ -447,10 +428,10 @@
     try {
       const [allNodes, allReadings, allAlerts, favourites, allDiagnostics] = await Promise.all([
         API.request("/api/nodes"),
-        API.request("/api/readings"),
+        API.request(`/api/readings?user_id=${state.user.user_id}&limit=5000`),
         API.request("/api/alerts"),
         API.request(`/api/user/${state.user.user_id}/favourites`),
-        API.request("/api/diagnostics"),
+        API.request(`/api/diagnostics?user_id=${state.user.user_id}&limit=500`),
       ]);
 
       const nodes = allNodes
@@ -477,7 +458,7 @@
       const enabledAlerts = alerts.filter((alert) => alert.enabled);
       const triggered = enabledAlerts
         .map((alert) => ({ alert, reading: latestFor(grouped, alert.node_id) }))
-        .filter(({ alert, reading }) => evaluateAlert(alert, reading));
+        .filter(({ alert, reading }) => API.evaluateAlert(alert, reading));
 
       setStat("nodes", API.formatInteger(nodes.length), nodes.length ? `${nodes.length} registered` : "Add your first node");
       setStat("live", API.formatInteger(liveCount), `${liveCount} of ${nodes.length} reporting`);
@@ -491,12 +472,12 @@
         setHealth("warning", "Your nodes are quiet", "No readings have arrived in the last 15 minutes. Check the node power and Wi-Fi.", "No live nodes");
       } else if (triggered.length) {
         const { alert, reading } = triggered[0];
-        const measurement = MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
+        const measurement = API.MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
         const nodeName = nodes.find((node) => node.node_id === alert.node_id)?.node_name || `Node ${alert.node_id}`;
         setHealth(
           "warning",
           "Environmental drift detected",
-          `${nodeName}: ${measurement.label.toLowerCase()} is ${metric(reading[alert.measurement_type], measurement.unit)} against a ${alert.comparison_operator} ${API.formatNumber(alert.threshold_value, 1)}${measurement.unit} threshold.`,
+          `${nodeName}: ${measurement.label.toLowerCase()} is ${metric(reading[alert.measurement_type], measurement.unit, measurement.digits)} against a ${alert.comparison_operator} ${API.formatNumber(alert.threshold_value, measurement.digits)}${measurement.unit} threshold.`,
           `${triggered.length} alert${triggered.length === 1 ? "" : "s"}`
         );
       } else {

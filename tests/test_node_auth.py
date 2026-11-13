@@ -144,3 +144,72 @@ def test_heartbeat_updates_last_seen(client):
     body = response.json()
     assert body["status"] == "active"
     assert body["last_seen"] is not None
+
+
+def test_readings_support_scoping_and_limit(client):
+    token = register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    node_one = client.post(
+        "/api/node", json={"node_name": "Pi 5"}, headers=headers
+    ).json()["node_id"]
+    node_two = client.post(
+        "/api/node", json={"node_name": "Pi Zero"}, headers=headers
+    ).json()["node_id"]
+
+    for temperature in (20.0, 21.0, 22.0):
+        client.post(
+            f"/api/node/{node_one}/reading",
+            json={"temperature": temperature, "humidity": 48.0},
+            headers=headers,
+        )
+    for temperature in (23.0, 24.0):
+        client.post(
+            f"/api/node/{node_two}/reading",
+            json={"temperature": temperature, "humidity": 50.0},
+            headers=headers,
+        )
+
+    response = client.get(f"/api/readings?node_id={node_one}&limit=2")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+    assert all(reading["node_id"] == node_one for reading in response.json())
+
+    response = client.get("/api/readings?user_id=1&limit=10")
+    assert response.status_code == 200
+    assert len(response.json()) == 5
+
+    assert client.get("/api/readings?limit=0").status_code == 422
+
+
+def test_diagnostics_support_scoping_and_limit(client):
+    token = register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    node_one = client.post(
+        "/api/node", json={"node_name": "Pi 5"}, headers=headers
+    ).json()["node_id"]
+    node_two = client.post(
+        "/api/node", json={"node_name": "Pi Zero"}, headers=headers
+    ).json()["node_id"]
+
+    for uptime in (100, 200):
+        client.post(
+            f"/api/node/{node_one}/diagnostic",
+            json={"uptime": uptime, "wifi_connected": True},
+            headers=headers,
+        )
+    client.post(
+        f"/api/node/{node_two}/diagnostic",
+        json={"uptime": 300, "wifi_connected": False},
+        headers=headers,
+    )
+
+    response = client.get(f"/api/diagnostics?node_id={node_one}&limit=1")
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["node_id"] == node_one
+
+    response = client.get("/api/diagnostics?user_id=1&limit=10")
+    assert response.status_code == 200
+    assert len(response.json()) == 3
+
+    assert client.get("/api/diagnostics?limit=0").status_code == 422

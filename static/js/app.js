@@ -24,9 +24,6 @@
     document.querySelectorAll("[data-user-initials]").forEach((element) => {
       element.textContent = API.initials(user.username);
     });
-    document.querySelectorAll("[data-user-role]").forEach((element) => {
-      element.textContent = user.role || "user";
-    });
     document.querySelectorAll("[data-greeting]").forEach((element) => {
       element.textContent = `${greeting()}, ${user.username}`;
     });

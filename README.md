@@ -91,7 +91,7 @@ Raspberry Pi 400 (enclosure node)        Mosquitto broker          VivariumIQ AP
 
 ## Web Dashboard
 
-The web interface is server-rendered with Jinja2 and progressively enhanced with a small vanilla JavaScript layer. It uses Tailwind CSS 4 and daisyUI 5 from a CDN, so there is no frontend build step.
+The web interface is server-rendered with Jinja2 and progressively enhanced with a small vanilla JavaScript layer. Tailwind CSS 4, daisyUI 5, and Chart.js are vendored under `static/vendor/`, so there is no frontend build step or runtime CDN dependency.
 
 | Route | Purpose |
 |---|---|
@@ -159,7 +159,7 @@ See [Project Status and Known Issues](#project-status-and-known-issues) for the 
 │   ├── schema.sql          # Database schema
 │   └── backup_urcast.sh    # Daily backup script
 ├── templates/              # Jinja2 landing, auth, dashboard, node, alert and profile pages
-├── static/                 # Tailwind/daisyUI CSS, dashboard JavaScript, icons and manifest
+├── static/                 # Tailwind/daisyUI CSS, vendored frontend dependencies, JavaScript, icons and manifest
 └── tests/                  # pytest suite
 ```
 

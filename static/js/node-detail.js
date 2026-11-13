@@ -17,12 +17,6 @@
     alertsBusy: false,
   };
 
-  const MEASUREMENTS = {
-    temperature: { label: "Temperature", unit: "°C", color: "#527c9f", bg: "rgba(82, 124, 159, 0.12)", digits: 1 },
-    humidity: { label: "Humidity", unit: "%", color: "#84cc16", bg: "rgba(132, 204, 22, 0.1)", digits: 0 },
-    pressure: { label: "Pressure", unit: " hPa", color: "#0ea5e9", bg: "rgba(14, 165, 233, 0.1)", digits: 0 },
-  };
-
   const DIAGNOSTIC_KEYS = [
     { key: "wifi_connected", label: "Wi-Fi" },
     { key: "dht22_status", label: "DHT22" },
@@ -166,7 +160,12 @@
       const known = DIAGNOSTIC_KEYS.filter(({ key }) => diagnostic[key] !== null && diagnostic[key] !== undefined);
       const failed = known.filter(({ key }) => diagnostic[key] === false).map(({ label: name }) => name);
       const ok = known.filter(({ key }) => diagnostic[key] === true).length;
-      if (failed.length) {
+      if (!known.length) {
+        tone = "neutral";
+        heading = "Diagnostic received";
+        body = "The report did not include any sensor status values.";
+        label = "Incomplete";
+      } else if (failed.length) {
         tone = "warning";
         heading = "Some sensors need attention";
         body = `Failed checks: ${failed.join(", ")}.`;
@@ -200,7 +199,7 @@
     const canvas = document.getElementById("node-chart");
     const empty = document.getElementById("node-chart-empty");
     if (!canvas) return;
-    const measurement = MEASUREMENTS[state.chartMetric];
+    const measurement = API.MEASUREMENTS[state.chartMetric];
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     let points = state.readings
       .filter((reading) => {
@@ -405,21 +404,6 @@
       .join("");
   }
 
-  function evaluateAlert(alert, reading) {
-    if (!alert.enabled || !reading) return false;
-    const value = Number(reading[alert.measurement_type]);
-    const threshold = Number(alert.threshold_value);
-    if (!Number.isFinite(value) || !Number.isFinite(threshold)) return false;
-    switch (alert.comparison_operator) {
-      case ">": return value > threshold;
-      case "<": return value < threshold;
-      case ">=": return value >= threshold;
-      case "<=": return value <= threshold;
-      case "==": return Math.abs(value - threshold) < 0.001;
-      default: return false;
-    }
-  }
-
   function renderAlerts() {
     const container = document.getElementById("node-alerts");
     if (!container) return;
@@ -437,15 +421,15 @@
 
     container.innerHTML = alerts
       .map((alert) => {
-        const measurement = MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
-        const triggered = evaluateAlert(alert, reading);
+        const measurement = API.MEASUREMENTS[alert.measurement_type] || { label: alert.measurement_type, unit: "" };
+        const triggered = API.evaluateAlert(alert, reading);
         return `
           <div class="flex flex-col gap-3 rounded-xl border border-base-content/7 px-4 py-3 sm:flex-row sm:items-center">
             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${triggered ? "bg-error/12 text-error" : alert.enabled ? "bg-primary/10 text-primary" : "bg-base-200 text-base-content/35"}">
               <span class="h-2 w-2 rounded-full ${triggered ? "bg-error" : alert.enabled ? "bg-primary" : "bg-base-content/25"}"></span>
             </span>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold">${measurement.label} ${API.escapeHtml(alert.comparison_operator)} ${API.formatNumber(alert.threshold_value, 1)}${measurement.unit}</p>
+              <p class="text-sm font-semibold">${measurement.label} ${API.escapeHtml(alert.comparison_operator)} ${API.formatNumber(alert.threshold_value, measurement.digits)}${measurement.unit}</p>
               <p class="mt-0.5 text-[11px] text-base-content/45">${triggered ? "Currently crossed by the latest reading." : alert.enabled ? "Armed and watching the latest reading." : "Paused."}</p>
             </div>
             <div class="flex items-center gap-2">
@@ -480,10 +464,10 @@
     try {
       const [node, allReadings, hourly, daily, allDiagnostics, allAlerts, favourites] = await Promise.all([
         API.request(`/api/node/${state.nodeId}`),
-        API.request("/api/readings"),
+        API.request(`/api/readings?node_id=${state.nodeId}&limit=5000`),
         API.request(`/api/nodes/${state.nodeId}/summaries/hourly`),
         API.request(`/api/nodes/${state.nodeId}/summaries/daily`),
-        API.request("/api/diagnostics"),
+        API.request(`/api/diagnostics?node_id=${state.nodeId}&limit=200`),
         API.request("/api/alerts"),
         API.request(`/api/user/${state.user.user_id}/favourites`),
       ]);
