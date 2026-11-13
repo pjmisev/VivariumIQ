@@ -1,0 +1,82 @@
+{% extends "auth_layout.html" %}
+{% import "macros/icons.html" as icons %}
+
+{% block auth_content %}
+<div class="card bg-base-100 shadow-xl shadow-base-content/5">
+  <div class="card-body p-6 sm:p-8">
+    <div class="mb-6">
+      <span class="icon-tile">{{ icons.icon("leaf", "h-5 w-5") }}</span>
+      <h1 class="mt-5 font-display text-2xl font-extrabold tracking-[-0.035em]">Create your account</h1>
+      <p class="mt-2 text-sm leading-6 text-base-content/55">Add your first enclosure in under a minute.</p>
+    </div>
+
+    <div id="auth-error" class="alert alert-error mb-5 hidden text-sm" role="alert">
+      <span id="auth-error-message"></span>
+    </div>
+
+    <form id="register-form" class="space-y-4" novalidate>
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="username">Username</label>
+        <label class="input input-bordered flex w-full items-center gap-3">
+          {{ icons.icon("user", "h-5 w-5 shrink-0 text-base-content/35") }}
+          <input id="username" name="username" type="text" autocomplete="username" required minlength="3" maxlength="100" class="grow text-sm" placeholder="pijus">
+        </label>
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="email">Email address</label>
+        <label class="input input-bordered flex w-full items-center gap-3">
+          {{ icons.icon("mail", "h-5 w-5 shrink-0 text-base-content/35") }}
+          <input id="email" name="email" type="email" autocomplete="email" required class="grow text-sm" placeholder="you@example.com">
+        </label>
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="password">Password</label>
+        <label class="input input-bordered flex w-full items-center gap-3">
+          {{ icons.icon("lock", "h-5 w-5 shrink-0 text-base-content/35") }}
+          <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="72" class="grow text-sm" placeholder="At least 8 characters">
+          <button type="button" class="btn btn-ghost btn-xs btn-circle text-base-content/40" data-password-toggle="password" aria-label="Show password">
+            <span data-eye-open>{{ icons.icon("eye", "h-4 w-4") }}</span>
+            <span data-eye-closed class="hidden">{{ icons.icon("eye-off", "h-4 w-4") }}</span>
+          </button>
+        </label>
+        <div class="mt-2 flex gap-1" aria-hidden="true">
+          <span class="strength-bar h-1 flex-1 rounded-full bg-base-300 transition-colors" data-strength-bar></span>
+          <span class="strength-bar h-1 flex-1 rounded-full bg-base-300 transition-colors" data-strength-bar></span>
+          <span class="strength-bar h-1 flex-1 rounded-full bg-base-300 transition-colors" data-strength-bar></span>
+          <span class="strength-bar h-1 flex-1 rounded-full bg-base-300 transition-colors" data-strength-bar></span>
+        </div>
+        <p id="strength-label" class="mt-1.5 text-[11px] text-base-content/40">Use 8 or more characters.</p>
+      </div>
+
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-base-content/70" for="confirm-password">Confirm password</label>
+        <label class="input input-bordered flex w-full items-center gap-3">
+          {{ icons.icon("lock", "h-5 w-5 shrink-0 text-base-content/35") }}
+          <input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" required class="grow text-sm" placeholder="Repeat your password">
+          <button type="button" class="btn btn-ghost btn-xs btn-circle text-base-content/40" data-password-toggle="confirm-password" aria-label="Show password">
+            <span data-eye-open>{{ icons.icon("eye", "h-4 w-4") }}</span>
+            <span data-eye-closed class="hidden">{{ icons.icon("eye-off", "h-4 w-4") }}</span>
+          </button>
+        </label>
+      </div>
+
+      <label class="flex cursor-pointer items-start gap-3 rounded-xl bg-base-200/70 p-3 text-xs leading-5 text-base-content/55">
+        <input id="terms" type="checkbox" required class="checkbox checkbox-primary checkbox-sm mt-0.5">
+        <span>I understand that VivariumIQ is a monitoring tool and does not replace hands-on husbandry or veterinary care.</span>
+      </label>
+
+      <button id="register-submit" type="submit" class="btn btn-primary mt-1 w-full">
+        Create account
+        {{ icons.icon("arrow-right", "h-4 w-4") }}
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-base-content/50">
+      Already have an account?
+      <a href="{{ url_for('login') }}" class="link link-primary font-semibold">Sign in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

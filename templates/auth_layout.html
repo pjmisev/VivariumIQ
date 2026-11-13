@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% import "macros/icons.html" as icons %}
+
+{% block nav %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+  <aside class="auth-brand-panel relative hidden flex-col justify-between p-10 text-white lg:flex xl:p-14">
+    <div class="relative z-10">
+      <a href="{{ url_for('home') }}" class="flex items-center gap-3">
+        <img src="{{ url_for('static', path='icons/vivariumiq_mark.svg') }}" alt="" class="h-11 w-11 rounded-2xl shadow-lg">
+        <span class="font-display text-xl font-bold">Vivarium<span class="text-[#bef264]">IQ</span></span>
+      </a>
+    </div>
+
+    <div class="relative z-10 max-w-md">
+      <div class="badge border-white/15 bg-white/10 py-3 text-white/80">
+        <span class="status-dot is-live mr-1 text-[#bef264]"></span>
+        Enclosure intelligence
+      </div>
+      <h1 class="mt-6 text-balance font-display text-4xl font-extrabold leading-tight tracking-[-0.04em] xl:text-5xl">
+        The quiet confidence of knowing.
+      </h1>
+      <p class="mt-5 text-sm leading-7 text-white/60">
+        Temperature, humidity, pressure, motion and sensor health, streaming into one calm view. Built for keepers who notice the small things.
+      </p>
+
+      <div class="mt-8 grid grid-cols-3 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+          <p class="font-display text-lg font-bold">24.6°</p>
+          <p class="mt-1 text-[10px] text-white/45">temperature</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+          <p class="font-display text-lg font-bold">68%</p>
+          <p class="mt-1 text-[10px] text-white/45">humidity</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+          <p class="font-display text-lg font-bold">Live</p>
+          <p class="mt-1 text-[10px] text-white/45">node status</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="relative z-10">
+      <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
+        <p class="text-sm leading-6 text-white/75">“I stopped opening three different apps just to check one enclosure. Everything I care about is on one screen now.”</p>
+        <p class="mt-4 text-xs font-medium text-white/45">Designed around real keeper routines</p>
+      </div>
+      <a href="{{ url_for('home') }}" class="mt-6 inline-flex items-center gap-2 text-xs text-white/45 transition hover:text-white/80">
+        {{ icons.icon("arrow-left", "h-4 w-4") }} Back to the website
+      </a>
+    </div>
+  </aside>
+
+  <section class="relative flex min-h-screen flex-col bg-base-200">
+    <header class="flex items-center justify-between px-4 py-4 sm:px-8">
+      <a href="{{ url_for('home') }}" class="flex items-center gap-2 lg:hidden">
+        <img src="{{ url_for('static', path='icons/vivariumiq_mark.svg') }}" alt="" class="h-9 w-9 rounded-xl">
+        <span class="font-display text-base font-bold">Vivarium<span class="text-primary">IQ</span></span>
+      </a>
+      <div class="ml-auto flex items-center gap-2">
+        <a href="{{ url_for('home') }}" class="btn btn-ghost btn-sm hidden sm:inline-flex">Back to site</a>
+        <button type="button" class="btn btn-ghost btn-circle btn-sm" data-theme-toggle aria-label="Switch colour theme">
+          <span data-theme-icon="sun" class="hidden">{{ icons.icon("sun", "h-5 w-5") }}</span>
+          <span data-theme-icon="moon">{{ icons.icon("moon", "h-5 w-5") }}</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="flex flex-1 items-center justify-center px-4 py-8 sm:px-8">
+      <div class="w-full max-w-md">
+        <div id="session-banner" class="mb-5 hidden alert alert-info text-sm">
+          <span class="flex-1">You are already signed in.</span>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-primary">Open dashboard</a>
+        </div>
+        {% block auth_content %}{% endblock %}
+      </div>
+    </div>
+
+    <footer class="px-4 pb-6 text-center text-xs text-base-content/35 sm:px-8">
+      © <span data-current-year>2026</span> VivariumIQ · Built for better husbandry
+    </footer>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/api.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/auth.js') }}" defer></script>
+{% endblock %}
