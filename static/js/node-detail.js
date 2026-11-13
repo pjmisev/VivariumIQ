@@ -12,6 +12,7 @@
     alerts: [],
     favourites: new Set(),
     chart: null,
+    zoomController: null,
     chartMetric: "temperature",
     loading: false,
     alertsBusy: false,
@@ -27,6 +28,36 @@
 
   const STAR_OUTLINE = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>';
   const STAR_FILLED = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd"/></svg>';
+
+  const targetBandPlugin = {
+    id: "targetBand",
+    beforeDatasetsDraw(chart, _args, options) {
+      if (!options || options.min === null || options.max === null) return;
+      const area = chart.chartArea;
+      const yScale = chart.scales && chart.scales.y;
+      if (!area || !yScale) return;
+      const first = yScale.getPixelForValue(Math.min(options.max, yScale.max));
+      const second = yScale.getPixelForValue(Math.max(options.min, yScale.min));
+      if (!Number.isFinite(first) || !Number.isFinite(second)) return;
+      const top = Math.max(area.top, Math.min(first, second));
+      const bottom = Math.min(area.bottom, Math.max(first, second));
+      if (bottom <= top) return;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.fillStyle = "rgba(132, 204, 22, 0.1)";
+      ctx.fillRect(area.left, top, area.right - area.left, bottom - top);
+      ctx.strokeStyle = "rgba(101, 163, 13, 0.35)";
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(area.left, top);
+      ctx.lineTo(area.right, top);
+      ctx.moveTo(area.left, bottom);
+      ctx.lineTo(area.right, bottom);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
 
   function metric(value, unit, digits) {
     if (value === null || value === undefined || value === "") return "—";
@@ -254,8 +285,8 @@
       label = "No data";
     }
 
-    banner.className = `mt-6 rounded-2xl border p-4 sm:p-5 ${
-      tone === "success" ? "border-success/20 bg-success/5" : tone === "warning" ? "border-warning/25 bg-warning/5" : "border-base-content/8 bg-base-100"
+    banner.className = `mt-6 rounded-2xl border border-l-4 p-4 sm:p-5 ${
+      tone === "success" ? "border-success/20 border-l-success bg-success/5" : tone === "warning" ? "border-warning/25 border-l-warning bg-warning/5" : "border-base-content/8 border-l-base-content/20 bg-base-100"
     }`;
     if (icon) icon.className = `flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconTileClass(tone)}`;
     if (title) title.textContent = heading;
@@ -306,10 +337,16 @@
       points = points.filter((_, index) => index % step === 0 || index === points.length - 1);
     }
 
+    if (state.zoomController) {
+      state.zoomController.destroy();
+      state.zoomController = null;
+    }
     if (state.chart) {
       state.chart.destroy();
       state.chart = null;
     }
+    const panSlider = document.querySelector("[data-chart-pan-slider]");
+    if (panSlider) panSlider.classList.add("hidden");
 
     if (!points.length) {
       canvas.classList.add("hidden");
@@ -333,20 +370,34 @@
     const values = points.map((reading) => Number(reading[state.chartMetric]));
     const labels = points.map((reading) => API.formatTime(reading.recorded_at));
     const textColor = "#64748b";
+    const targetMetric = API.evaluateTargets(state.node && state.node.targets, latestReading()).metrics.find((item) => item.key === state.chartMetric);
+    const hasTarget = targetMetric && targetMetric.min !== null && targetMetric.max !== null;
+    const dataMin = Math.min(...values);
+    const dataMax = Math.max(...values);
+    const targetMin = hasTarget ? targetMetric.min : dataMin;
+    const targetMax = hasTarget ? targetMetric.max : dataMax;
+    const span = Math.max(1, targetMax - targetMin, dataMax - dataMin);
+    const lower = Math.min(dataMin, targetMin) - span * 0.12;
+    const upper = Math.max(dataMax, targetMax) + span * 0.12;
+    document.querySelectorAll("[data-chart-target]").forEach((element) => {
+      element.textContent = hasTarget ? `Target ${API.targetRangeLabel(targetMetric)}` : "No target set.";
+    });
 
     state.chart = new Chart(canvas.getContext("2d"), {
       type: "line",
+      plugins: [targetBandPlugin],
       data: {
         labels,
         datasets: [
           {
             label: measurement.label,
-            data: values,
+            data: values.map((value, index) => ({ x: index, y: value })),
             borderColor: measurement.color,
             backgroundColor: measurement.bg,
             borderWidth: 2.25,
             pointRadius: 0,
-            pointHoverRadius: 4,
+            pointHoverRadius: 5,
+            pointHitRadius: 18,
             tension: 0.35,
             fill: true,
           },
@@ -356,16 +407,23 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
+        hover: { mode: "index", intersect: false, animationDuration: 80 },
         animation: { duration: 450 },
         plugins: {
           legend: { display: false },
+          targetBand: { min: hasTarget ? targetMetric.min : null, max: hasTarget ? targetMetric.max : null },
           tooltip: {
             backgroundColor: "#0f172a",
-            padding: 10,
+            padding: 12,
+            caretPadding: 8,
             cornerRadius: 8,
             titleFont: { family: "Inter", size: 11 },
             bodyFont: { family: "Inter", size: 11 },
             callbacks: {
+              title(items) {
+                const index = items && items[0] ? Math.round(items[0].parsed.x) : 0;
+                return labels[index] || "";
+              },
               label(context) {
                 return `${measurement.label}: ${API.formatNumber(context.parsed.y, measurement.digits)}${measurement.unit}`;
               },
@@ -374,13 +432,22 @@
         },
         scales: {
           x: {
+            type: "linear",
+            min: 0,
+            max: Math.max(0, points.length - 1),
             grid: { display: false },
-            ticks: { color: textColor, maxTicksLimit: 8, font: { family: "Inter", size: 10 } },
+            ticks: {
+              color: textColor,
+              maxTicksLimit: 8,
+              precision: 0,
+              font: { family: "Inter", size: 10 },
+              callback: (value) => labels[Math.round(value)] || "",
+            },
             border: { display: false },
           },
           y: {
-            suggestedMin: Math.min(...values) - Math.max(1, (Math.max(...values) - Math.min(...values)) * 0.15),
-            suggestedMax: Math.max(...values) + Math.max(1, (Math.max(...values) - Math.min(...values)) * 0.15),
+            suggestedMin: lower,
+            suggestedMax: upper,
             grid: { color: "rgba(100, 116, 139, 0.12)" },
             ticks: {
               color: textColor,
@@ -392,6 +459,10 @@
         },
       },
     });
+
+    if (window.ChartZoom) {
+      state.zoomController = ChartZoom.attach(canvas, state.chart, { minSpan: 8 });
+    }
   }
 
   function renderReadings() {
@@ -782,8 +853,7 @@
     const favouriteButton = document.querySelector("[data-node-favourite]");
     if (favouriteButton) favouriteButton.addEventListener("click", toggleFavourite);
     const refreshButton = document.querySelector("[data-refresh]");
-    if (refreshButton) refreshButton.addEventListener("click", load);
-    await load();
+    if (refreshButton) refreshButton.addEventListener("click", load);    await load();
     window.setInterval(() => {
       if (!document.hidden) load();
     }, 60_000);

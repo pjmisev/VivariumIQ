@@ -155,6 +155,21 @@
     return `${formatTargetValue(min, digits)}–${formatTargetValue(max, digits)} ${metric.unit}`;
   }
 
+  function targetDetail(targets, evaluation) {
+    if (!evaluation || !evaluation.configured) {
+      return "No target ranges set yet.";
+    }
+    const out = evaluation.metrics.find((metric) => metric.status === "low" || metric.status === "high");
+    if (out) {
+      const direction = out.status === "low" ? "below" : "above";
+      return `${out.label} ${formatTargetValue(out.value, out.digits)}${out.unit} is ${direction} the ${targetRangeLabel(out)} target.`;
+    }
+    const missing = evaluation.metrics.find((metric) => metric.status === "unknown");
+    if (missing) return `Waiting for a complete ${missing.label.toLowerCase()} reading.`;
+    const label = targets && targets.preset_name ? targets.preset_name : "Custom targets";
+    return `${label} · all ${evaluation.total} tracked metrics in range.`;
+  }
+
   function evaluateAlert(alert, reading) {
     if (!alert || !alert.enabled || !reading) return false;
     const rawValue = reading[alert.measurement_type];
@@ -321,23 +336,6 @@
     }
   }
 
-  async function copyText(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch (_) {
-      const area = document.createElement("textarea");
-      area.value = text;
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.appendChild(area);
-      area.select();
-      const ok = document.execCommand("copy");
-      area.remove();
-      return ok;
-    }
-  }
-
   function toast(message, type) {
     if (window.VIQ && window.VIQ.toast) window.VIQ.toast(message, type);
     else if (type === "error") console.error(message);
@@ -353,6 +351,7 @@
     evaluateAlert,
     evaluateTargets,
     targetRangeLabel,
+    targetDetail,
     request,
     isDemo,
     getToken,
@@ -372,7 +371,6 @@
     initials,
     escapeHtml,
     setButtonLoading,
-    copyText,
     toast,
   };
 })();

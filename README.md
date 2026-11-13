@@ -101,9 +101,11 @@ The web interface is server-rendered with Jinja2 and progressively enhanced with
 | `/app/nodes` | Searchable enclosure list, status filters, favourite toggles and node registration |
 | `/app/nodes/{id}` | Per-node telemetry, hourly/daily history, diagnostics, edit/delete and node alerts |
 | `/app/alerts` | Create, edit, pause and delete threshold alerts |
-| `/app/profile` | Account settings, API token access, sign out and account deletion |
+| `/app/profile` | Account settings, sign out and account deletion |
 
 The dashboard talks to the existing REST API with the JWT stored in `localStorage`, so every write is still authorised by the backend. If a token expires, the client clears the session and redirects to `/login` with a return path. The light/dark theme is remembered per browser.
+
+Each enclosure can use one of 55 species presets or custom temperature, humidity and pressure ranges. Those ranges drive the main health banner, the “In target” stat and the target status shown on every enclosure card, so the dashboard leads with husbandry health rather than raw charts.
 
 ### Demo mode
 
@@ -580,7 +582,7 @@ Implemented in this repository:
 - Web landing page, login/register screens and responsive app shell
 - Dashboard with health banner, microclimate chart, enclosure cards, alerts and recent activity
 - Enclosure list and per-node views for telemetry, hourly/daily history, diagnostics and alert management
-- Favourite toggles, profile settings, API token access and account deletion
+- Favourite toggles, profile settings and account deletion
 - Light and dark themes plus HTML error pages
 - Daily database backups
 

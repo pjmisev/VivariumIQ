@@ -276,7 +276,11 @@ textarea {
 .chart-wrap {
   position: relative;
   width: 100%;
-  height: 18rem;
+  height: 20rem;
+}
+
+.chart-wrap canvas {
+  cursor: crosshair;
 }
 
 .chart-wrap-sm {
@@ -474,3 +478,11 @@ textarea {
 .text-base-content\/75 { color: color-mix(in oklch, var(--color-base-content) 75%, transparent); }
 .text-primary\/25 { color: color-mix(in oklch, var(--color-primary) 25%, transparent); }
 .text-primary\/55 { color: color-mix(in oklch, var(--color-primary) 55%, transparent); }
+
+/* Directional target-state accents (daisyUI only ships all-side colour utilities). */
+.border-l-success { border-left-color: var(--color-success) !important; }
+.border-l-warning { border-left-color: var(--color-warning) !important; }
+.border-l-error { border-left-color: var(--color-error) !important; }
+.border-l-base-content\/20 { border-left-color: color-mix(in oklch, var(--color-base-content) 20%, transparent) !important; }
+.border-l-4 { border-left-width: 4px; }
+.chart-wrap canvas.is-panning { cursor: grabbing; }

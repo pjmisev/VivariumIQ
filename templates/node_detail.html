@@ -133,7 +133,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 class="font-display text-base font-bold">24-hour trend</h3>
-                <p class="mt-1 text-xs text-base-content/45">Raw readings from this enclosure.</p>
+                <p class="mt-1 text-xs text-base-content/45">Raw readings from this enclosure. <span class="font-medium text-base-content/65" data-chart-target>No target set.</span></p>
               </div>
               <div class="flex gap-1 rounded-lg bg-base-200 p-1" role="group" aria-label="Chart measurement">
                 <button type="button" class="btn btn-primary btn-xs" data-chart-metric="temperature">Temp</button>
@@ -141,13 +141,23 @@
                 <button type="button" class="btn btn-ghost btn-xs" data-chart-metric="pressure">Pressure</button>
               </div>
             </div>
-            <div class="chart-wrap mt-5">
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p class="text-[10px] text-base-content/35">Wheel to zoom · drag to scroll · double-click to reset</p>
+              <div class="flex items-center gap-1">
+                <button type="button" class="btn btn-ghost btn-xs" data-chart-zoom-out aria-label="Zoom out">−</button>
+                <span class="min-w-16 text-center font-mono text-[10px] text-base-content/40" data-chart-zoom-label>—</span>
+                <button type="button" class="btn btn-ghost btn-xs" data-chart-zoom-in aria-label="Zoom in">+</button>
+                <button type="button" class="btn btn-ghost btn-xs" data-chart-reset-zoom>Reset</button>
+              </div>
+            </div>
+            <div class="chart-wrap mt-3">
               <canvas id="node-chart" aria-label="Enclosure telemetry chart"></canvas>
               <div id="node-chart-empty" class="chart-empty hidden">
                 {{ icons.icon("trending-up", "h-6 w-6") }}
                 <p class="text-xs font-medium">No readings in the last 24 hours.</p>
               </div>
             </div>
+            <input type="range" min="0" max="0" step="1" value="0" class="range range-xs range-primary mt-3 hidden w-full" data-chart-pan-slider aria-label="Scroll chart horizontally">
           </div>
         </section>
 

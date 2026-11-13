@@ -37,9 +37,9 @@
     <span class="badge badge-ghost badge-sm self-start sm:self-auto" id="health-badge">Checking</span>
   </section>
 
-  <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
     <div class="card bg-base-100">
-      <div class="card-body gap-2 p-5">
+      <div class="card-body gap-2 p-4 sm:p-5">
         <div class="flex items-center justify-between">
           <p class="text-xs font-semibold uppercase tracking-[0.1em] text-base-content/40">Enclosures</p>
           <span class="text-primary/70">{{ icons.icon("nodes", "h-5 w-5") }}</span>
@@ -49,7 +49,7 @@
       </div>
     </div>
     <div class="card bg-base-100">
-      <div class="card-body gap-2 p-5">
+      <div class="card-body gap-2 p-4 sm:p-5">
         <div class="flex items-center justify-between">
           <p class="text-xs font-semibold uppercase tracking-[0.1em] text-base-content/40">Live now</p>
           <span class="text-success/80">{{ icons.icon("signal", "h-5 w-5") }}</span>
@@ -59,7 +59,7 @@
       </div>
     </div>
     <div class="card bg-base-100">
-      <div class="card-body gap-2 p-5">
+      <div class="card-body gap-2 p-4 sm:p-5">
         <div class="flex items-center justify-between">
           <p class="text-xs font-semibold uppercase tracking-[0.1em] text-base-content/40">In target</p>
           <span class="text-success/80">{{ icons.icon("check-circle", "h-5 w-5") }}</span>
@@ -69,7 +69,7 @@
       </div>
     </div>
     <div class="card bg-base-100">
-      <div class="card-body gap-2 p-5">
+      <div class="card-body gap-2 p-4 sm:p-5">
         <div class="flex items-center justify-between">
           <p class="text-xs font-semibold uppercase tracking-[0.1em] text-base-content/40">Active alerts</p>
           <span class="text-warning">{{ icons.icon("bell", "h-5 w-5") }}</span>
@@ -79,6 +79,41 @@
       </div>
     </div>
   </div>
+
+  <section class="mt-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h3 class="font-display text-base font-bold">Your enclosures</h3>
+        <p class="mt-1 text-xs text-base-content/45">Target health first, then the detail.</p>
+        <div class="mt-3 flex flex-wrap gap-1.5">
+          <span class="badge badge-success badge-sm gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-success"></span>In target <span data-target-summary="in">—</span></span>
+          <span class="badge badge-warning badge-sm gap-1.5"><span class="h-1.5 w-1.5 rounded-full bg-warning"></span>Needs attention <span data-target-summary="attention">—</span></span>
+          <span class="badge badge-ghost badge-sm gap-1.5">No targets <span data-target-summary="none">—</span></span>
+        </div>
+      </div>
+      <a href="{{ url_for('nodes') }}" class="btn btn-ghost btn-xs gap-1">
+        View all {{ icons.icon("arrow-right", "h-3.5 w-3.5") }}
+      </a>
+    </div>
+    <div id="dashboard-nodes" class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="skeleton h-52 rounded-2xl"></div>
+      <div class="skeleton h-52 rounded-2xl"></div>
+      <div class="skeleton h-52 rounded-2xl"></div>
+    </div>
+    <div id="dashboard-nodes-empty" class="mt-4 hidden">
+      <div class="card border-dashed bg-base-100">
+        <div class="card-body items-center py-12 text-center">
+          <span class="icon-tile">{{ icons.icon("nodes", "h-6 w-6") }}</span>
+          <h4 class="mt-3 font-display text-base font-bold">No enclosures yet</h4>
+          <p class="max-w-sm text-sm leading-6 text-base-content/50">Register your first Raspberry Pi node to start collecting microclimate and motion data.</p>
+          <a href="{{ url_for('nodes') }}?new=1" class="btn btn-primary btn-sm mt-2 gap-2">
+            {{ icons.icon("plus", "h-4 w-4") }}
+            Add your first enclosure
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <div class="mt-6 grid gap-6 xl:grid-cols-[1.65fr_1fr]">
     <section class="card bg-base-100">
@@ -93,13 +128,23 @@
             <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-[#84cc16]"></span> Humidity</span>
           </div>
         </div>
-        <div class="chart-wrap mt-5">
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p class="text-[10px] text-base-content/35">Wheel to zoom · drag to scroll · double-click to reset</p>
+          <div class="flex items-center gap-1">
+            <button type="button" class="btn btn-ghost btn-xs" data-chart-zoom-out aria-label="Zoom out">−</button>
+            <span class="min-w-16 text-center font-mono text-[10px] text-base-content/40" data-chart-zoom-label>—</span>
+            <button type="button" class="btn btn-ghost btn-xs" data-chart-zoom-in aria-label="Zoom in">+</button>
+            <button type="button" class="btn btn-ghost btn-xs" data-chart-reset-zoom>Reset</button>
+          </div>
+        </div>
+        <div class="chart-wrap mt-3">
           <canvas id="dashboard-chart" aria-label="Microclimate trend chart"></canvas>
           <div id="dashboard-chart-empty" class="chart-empty hidden">
             {{ icons.icon("trending-up", "h-6 w-6") }}
             <p class="text-xs font-medium">Readings will appear here once your nodes start reporting.</p>
           </div>
         </div>
+        <input type="range" min="0" max="0" step="1" value="0" class="range range-xs range-primary mt-3 hidden w-full" data-chart-pan-slider aria-label="Scroll chart horizontally">
       </div>
     </section>
 
@@ -134,36 +179,6 @@
       </div>
     </section>
   </div>
-
-  <section class="mt-8">
-    <div class="flex items-end justify-between gap-4">
-      <div>
-        <h3 class="font-display text-base font-bold">Your enclosures</h3>
-        <p class="mt-1 text-xs text-base-content/45">A quick status check for every registered node.</p>
-      </div>
-      <a href="{{ url_for('nodes') }}" class="btn btn-ghost btn-xs gap-1">
-        View all {{ icons.icon("arrow-right", "h-3.5 w-3.5") }}
-      </a>
-    </div>
-    <div id="dashboard-nodes" class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <div class="skeleton h-44 rounded-2xl"></div>
-      <div class="skeleton h-44 rounded-2xl"></div>
-      <div class="skeleton h-44 rounded-2xl"></div>
-    </div>
-    <div id="dashboard-nodes-empty" class="mt-4 hidden">
-      <div class="card border-dashed bg-base-100">
-        <div class="card-body items-center py-12 text-center">
-          <span class="icon-tile">{{ icons.icon("nodes", "h-6 w-6") }}</span>
-          <h4 class="mt-3 font-display text-base font-bold">No enclosures yet</h4>
-          <p class="max-w-sm text-sm leading-6 text-base-content/50">Register your first Raspberry Pi node to start collecting microclimate and motion data.</p>
-          <a href="{{ url_for('nodes') }}?new=1" class="btn btn-primary btn-sm mt-2 gap-2">
-            {{ icons.icon("plus", "h-4 w-4") }}
-            Add your first enclosure
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <div class="mt-8 grid gap-6 xl:grid-cols-2">
     <section class="card bg-base-100">

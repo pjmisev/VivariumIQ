@@ -3,6 +3,7 @@
 
   const state = {
     chart: null,
+    zoomController: null,
     loading: false,
     favouriteIds: new Set(),
     user: null,
@@ -57,13 +58,13 @@
     const badgeElement = document.getElementById("health-badge");
     if (!banner) return;
     const tones = {
-      success: { border: "border-success/20", bg: "bg-success/5", icon: "bg-success/12 text-success", badge: "badge-success" },
-      warning: { border: "border-warning/25", bg: "bg-warning/5", icon: "bg-warning/15 text-warning", badge: "badge-warning" },
-      error: { border: "border-error/20", bg: "bg-error/5", icon: "bg-error/12 text-error", badge: "badge-error" },
-      neutral: { border: "border-base-content/8", bg: "bg-base-100", icon: "bg-base-200 text-base-content/50", badge: "badge-ghost" },
+      success: { border: "border-success/20 border-l-success", bg: "bg-success/5", icon: "bg-success/12 text-success", badge: "badge-success" },
+      warning: { border: "border-warning/25 border-l-warning", bg: "bg-warning/5", icon: "bg-warning/15 text-warning", badge: "badge-warning" },
+      error: { border: "border-error/20 border-l-error", bg: "bg-error/5", icon: "bg-error/12 text-error", badge: "badge-error" },
+      neutral: { border: "border-base-content/8 border-l-base-content/20", bg: "bg-base-100", icon: "bg-base-200 text-base-content/50", badge: "badge-ghost" },
     };
     const style = tones[tone] || tones.neutral;
-    banner.className = `mt-6 flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${style.border} ${style.bg}`;
+    banner.className = `mt-6 flex flex-col gap-4 rounded-2xl border border-l-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${style.border} ${style.bg}`;
     if (icon) icon.className = `flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${style.icon}`;
     if (titleElement) titleElement.textContent = title;
     if (messageElement) messageElement.textContent = message;
@@ -127,10 +128,16 @@
       points = points.filter((_, index) => index % step === 0 || index === points.length - 1);
     }
 
+    if (state.zoomController) {
+      state.zoomController.destroy();
+      state.zoomController = null;
+    }
     if (state.chart) {
       state.chart.destroy();
       state.chart = null;
     }
+    const panSlider = document.querySelector("[data-chart-pan-slider]");
+    if (panSlider) panSlider.classList.add("hidden");
 
     const hasData = points.some((reading) => reading.temperature !== null || reading.humidity !== null);
     if (!hasData) {
@@ -164,25 +171,27 @@
         datasets: [
           {
             label: "Temperature",
-            data: temperatures,
+            data: temperatures.map((value, index) => ({ x: index, y: value })),
             borderColor: "#527c9f",
             backgroundColor: "rgba(82, 124, 159, 0.08)",
             borderWidth: 2,
             pointRadius: 0,
-            pointHoverRadius: 4,
+            pointHoverRadius: 5,
+            pointHitRadius: 18,
             tension: 0.35,
             fill: true,
             yAxisID: "y",
           },
           {
             label: "Humidity",
-            data: humidity,
+            data: humidity.map((value, index) => ({ x: index, y: value })),
             borderColor: "#84cc16",
             backgroundColor: "rgba(132, 204, 22, 0.06)",
             borderWidth: 2,
             borderDash: [5, 4],
             pointRadius: 0,
-            pointHoverRadius: 4,
+            pointHoverRadius: 5,
+            pointHitRadius: 18,
             tension: 0.35,
             fill: false,
             yAxisID: "y1",
@@ -193,16 +202,22 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
+        hover: { mode: "index", intersect: false, animationDuration: 80 },
         animation: { duration: 500 },
         plugins: {
           legend: { display: false },
           tooltip: {
             backgroundColor: "#0f172a",
-            padding: 10,
+            padding: 12,
+            caretPadding: 8,
             cornerRadius: 8,
             titleFont: { family: "Inter", size: 11 },
             bodyFont: { family: "Inter", size: 11 },
             callbacks: {
+              title(items) {
+                const index = items && items[0] ? Math.round(items[0].parsed.x) : 0;
+                return labels[index] || "";
+              },
               label(context) {
                 const unit = context.dataset.yAxisID === "y1" ? "%" : " °C";
                 return `${context.dataset.label}: ${API.formatNumber(context.parsed.y, 1)}${unit}`;
@@ -212,8 +227,17 @@
         },
         scales: {
           x: {
+            type: "linear",
+            min: 0,
+            max: Math.max(0, points.length - 1),
             grid: { display: false },
-            ticks: { color: textColor, maxTicksLimit: 8, font: { family: "Inter", size: 10 } },
+            ticks: {
+              color: textColor,
+              maxTicksLimit: 8,
+              precision: 0,
+              font: { family: "Inter", size: 10 },
+              callback: (value) => labels[Math.round(value)] || "",
+            },
             border: { display: false },
           },
           y: {
@@ -235,6 +259,10 @@
         },
       },
     });
+
+    if (window.ChartZoom) {
+      state.zoomController = ChartZoom.attach(canvas, state.chart, { minSpan: 8 });
+    }
   }
 
   function sparkline(values) {
@@ -284,8 +312,11 @@
           ? "No targets"
           : (node.targets && node.targets.preset_name ? node.targets.preset_name : "Custom targets");
         const targetBadgeClass = targetState.tone === "success" ? "badge-success" : targetState.tone === "warning" ? "badge-warning" : "badge-ghost";
+        const targetAccent = targetState.tone === "success" ? "border-l-success bg-success/5" : targetState.tone === "warning" ? "border-l-warning bg-warning/5" : "border-l-base-content/20";
+        const targetPanel = targetState.tone === "success" ? "border-success/20 bg-success/10" : targetState.tone === "warning" ? "border-warning/25 bg-warning/10" : "border-base-content/10 bg-base-200/50";
+        const targetDetail = API.targetDetail(node.targets, targetState);
         return `
-          <article class="card card-lift relative overflow-hidden bg-base-100">
+          <article class="card card-lift relative overflow-hidden border-l-4 bg-base-100 ${targetAccent}">
             <a href="/app/nodes/${node.node_id}" class="block p-5">
               <div class="pr-10">
                 <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] ${live ? "text-success" : "text-warning"}">
@@ -298,6 +329,15 @@
                 </p>
                 <p class="mt-0.5 truncate text-[10px] text-base-content/40">${API.escapeHtml(targetLabel)}</p>
               </div>
+
+              <div class="mt-3 rounded-xl border px-3 py-2.5 ${targetPanel}">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[9px] font-semibold uppercase tracking-[0.12em] text-base-content/45">Target health</span>
+                  <span class="badge badge-sm ${targetBadgeClass}">${targetState.label}</span>
+                </div>
+                <p class="mt-1 text-[10px] leading-4 text-base-content/55">${API.escapeHtml(targetDetail)}</p>
+              </div>
+
               <div class="mt-4 grid grid-cols-3 gap-2">
                 <div class="rounded-xl bg-base-200/70 px-2.5 py-2">
                   <p class="text-[9px] font-medium uppercase tracking-wide text-base-content/40">Temp</p>
@@ -313,9 +353,6 @@
                 </div>
               </div>
               <div class="mt-3 text-primary/60">${sparkline(temperatures)}</div>
-              <div class="mt-3 flex items-center gap-1.5 border-t border-base-content/7 pt-3">
-                <span class="badge badge-xs ${targetBadgeClass}">${targetState.label}</span>
-              </div>
               <div class="mt-2 flex items-center justify-between text-[10px] text-base-content/40">
                 <span class="flex items-center gap-1">Last seen ${API.timeAgo(node.last_seen)}</span>
                 <span class="font-semibold text-primary">Open →</span>
@@ -476,10 +513,18 @@
       const configuredStates = Array.from(targetStates.values()).filter((item) => item.configured);
       const inRangeCount = configuredStates.filter((item) => item.tone === "success").length;
       const configuredCount = configuredStates.length;
+      const targetSummary = {
+        in: inRangeCount,
+        attention: configuredStates.filter((item) => item.tone === "warning").length,
+        none: Array.from(targetStates.values()).filter((item) => !item.configured).length,
+      };
+      document.querySelectorAll('[data-target-summary="in"]').forEach((element) => { element.textContent = API.formatInteger(targetSummary.in); });
+      document.querySelectorAll('[data-target-summary="attention"]').forEach((element) => { element.textContent = API.formatInteger(targetSummary.attention); });
+      document.querySelectorAll('[data-target-summary="none"]').forEach((element) => { element.textContent = API.formatInteger(targetSummary.none); });
 
       setStat("nodes", API.formatInteger(nodes.length), nodes.length ? `${nodes.length} registered` : "Add your first node");
       setStat("live", API.formatInteger(liveCount), `${liveCount} of ${nodes.length} reporting`);
-      setStat("targets", API.formatInteger(inRangeCount), configuredCount ? `${configuredCount} with target ranges` : "No target ranges");
+      setStat("targets", configuredCount ? `${API.formatInteger(inRangeCount)}/${API.formatInteger(configuredCount)}` : "—", configuredCount ? `${configuredCount} with target ranges` : "No target ranges");
       setStat("alerts", API.formatInteger(enabledAlerts.length), `${alerts.length} total configured`);
       App.setAlertCount(enabledAlerts.length);
 

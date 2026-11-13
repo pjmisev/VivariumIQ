@@ -22,18 +22,22 @@
     </div>
   </div>
 
-  <div class="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+  <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
     <div class="rounded-2xl border border-base-content/8 bg-base-100 px-4 py-3">
       <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-base-content/40">Total</p>
       <p class="mt-1 font-display text-xl font-extrabold tabular" data-node-stat="total">—</p>
     </div>
-    <div class="rounded-2xl border border-success/15 bg-success/5 px-4 py-3">
-      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-success/70">Live</p>
+    <div class="rounded-2xl border border-base-content/8 bg-base-100 px-4 py-3">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-base-content/40">Live</p>
       <p class="mt-1 font-display text-xl font-extrabold tabular" data-node-stat="live">—</p>
     </div>
+    <div class="rounded-2xl border border-success/15 bg-success/5 px-4 py-3">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-success/70">In target</p>
+      <p class="mt-1 font-display text-xl font-extrabold tabular" data-node-stat="target">—</p>
+    </div>
     <div class="rounded-2xl border border-warning/20 bg-warning/5 px-4 py-3">
-      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-warning/80">Quiet</p>
-      <p class="mt-1 font-display text-xl font-extrabold tabular" data-node-stat="idle">—</p>
+      <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-warning/80">Needs attention</p>
+      <p class="mt-1 font-display text-xl font-extrabold tabular" data-node-stat="attention">—</p>
     </div>
   </div>
 
@@ -42,17 +46,19 @@
       {{ icons.icon("search", "h-4 w-4 shrink-0 text-base-content/35") }}
       <input id="node-search" type="search" class="grow text-sm" placeholder="Search by name or location…" aria-label="Search enclosures">
     </label>
-    <div class="flex gap-1 rounded-xl bg-base-200 p-1" role="group" aria-label="Filter enclosures">
+    <div class="flex flex-wrap gap-1 rounded-xl bg-base-200 p-1" role="group" aria-label="Filter enclosures">
       <button type="button" class="btn btn-primary btn-xs" data-node-filter="all">All</button>
       <button type="button" class="btn btn-ghost btn-xs" data-node-filter="live">Live</button>
       <button type="button" class="btn btn-ghost btn-xs" data-node-filter="quiet">Quiet</button>
+      <button type="button" class="btn btn-ghost btn-xs" data-node-filter="target">In target</button>
+      <button type="button" class="btn btn-ghost btn-xs" data-node-filter="attention">Attention</button>
     </div>
   </div>
 
   <div id="nodes-grid" class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-    <div class="skeleton h-56 rounded-2xl"></div>
-    <div class="skeleton h-56 rounded-2xl"></div>
-    <div class="skeleton h-56 rounded-2xl"></div>
+    <div class="skeleton h-64 rounded-2xl"></div>
+    <div class="skeleton h-64 rounded-2xl"></div>
+    <div class="skeleton h-64 rounded-2xl"></div>
   </div>
 
   <div id="nodes-empty" class="mt-5 hidden">
@@ -75,10 +81,10 @@
         <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">{{ icons.icon("cpu", "h-5 w-5") }}</span>
         <div>
           <h3 class="text-sm font-semibold">Registering a node</h3>
-          <p class="mt-1 max-w-2xl text-xs leading-5 text-base-content/55">Create the enclosure here, then use your API token from the profile page as the <code class="rounded bg-base-100 px-1 py-0.5 text-[10px]">token</code> field when the Pi publishes readings to MQTT.</p>
+          <p class="mt-1 max-w-2xl text-xs leading-5 text-base-content/55">Create the enclosure here, choose a species preset or custom target ranges, then connect the Pi to the MQTT broker and publish readings.</p>
         </div>
       </div>
-      <a href="{{ url_for('profile') }}#api-access" class="btn btn-outline btn-xs shrink-0">Get your token</a>
+      <a href="{{ url_for('swagger_ui_html') }}" class="btn btn-outline btn-xs shrink-0">API reference</a>
     </div>
   </div>
 </div>

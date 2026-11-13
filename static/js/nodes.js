@@ -64,14 +64,20 @@
 
   function renderStats() {
     const live = state.nodes.filter(isLive).length;
+    const targetStates = state.nodes.map((node) => API.evaluateTargets(node.targets, (state.grouped.get(node.node_id) || [])[0]));
+    const inTarget = targetStates.filter((item) => item.configured && item.tone === "success").length;
+    const attention = targetStates.filter((item) => !item.configured || item.tone === "warning").length;
     document.querySelectorAll('[data-node-stat="total"]').forEach((element) => {
       element.textContent = API.formatInteger(state.nodes.length);
     });
     document.querySelectorAll('[data-node-stat="live"]').forEach((element) => {
       element.textContent = API.formatInteger(live);
     });
-    document.querySelectorAll('[data-node-stat="idle"]').forEach((element) => {
-      element.textContent = API.formatInteger(state.nodes.length - live);
+    document.querySelectorAll('[data-node-stat="target"]').forEach((element) => {
+      element.textContent = API.formatInteger(inTarget);
+    });
+    document.querySelectorAll('[data-node-stat="attention"]').forEach((element) => {
+      element.textContent = API.formatInteger(attention);
     });
   }
 
@@ -84,6 +90,11 @@
       if (!matchesQuery) return false;
       if (state.filter === "live") return isLive(node);
       if (state.filter === "quiet") return !isLive(node);
+      if (state.filter === "target") return API.evaluateTargets(node.targets, (state.grouped.get(node.node_id) || [])[0]).tone === "success";
+      if (state.filter === "attention") {
+        const target = API.evaluateTargets(node.targets, (state.grouped.get(node.node_id) || [])[0]);
+        return !target.configured || target.tone === "warning";
+      }
       return true;
     });
   }
@@ -131,13 +142,16 @@
           ? "No targets"
           : (node.targets && node.targets.preset_name ? node.targets.preset_name : "Custom targets");
         const targetBadgeClass = targetState.tone === "success" ? "badge-success" : targetState.tone === "warning" ? "badge-warning" : "badge-ghost";
+        const targetAccent = targetState.tone === "success" ? "border-l-success bg-success/5" : targetState.tone === "warning" ? "border-l-warning bg-warning/5" : "border-l-base-content/20";
+        const targetPanel = targetState.tone === "success" ? "border-success/20 bg-success/10" : targetState.tone === "warning" ? "border-warning/25 bg-warning/10" : "border-base-content/10 bg-base-200/50";
+        const targetDetail = API.targetDetail(node.targets, targetState);
         const temperatures = (state.grouped.get(node.node_id) || [])
           .slice(0, 24)
           .reverse()
           .map((reading) => reading.temperature);
         const healthClass = health.tone === "success" ? "badge-success" : health.tone === "warning" ? "badge-warning" : "badge-ghost";
         return `
-          <article class="card card-lift relative overflow-hidden bg-base-100">
+          <article class="card card-lift relative overflow-hidden border-l-4 bg-base-100 ${targetAccent}">
             <a href="/app/nodes/${node.node_id}" class="block p-5">
               <div class="flex items-start justify-between gap-3 pr-10">
                 <div class="min-w-0">
@@ -151,6 +165,14 @@
                   </p>
                   <p class="mt-0.5 truncate text-[10px] text-base-content/40">${API.escapeHtml(targetLabel)}</p>
                 </div>
+              </div>
+
+              <div class="mt-3 rounded-xl border px-3 py-2.5 ${targetPanel}">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[9px] font-semibold uppercase tracking-[0.12em] text-base-content/45">Target health</span>
+                  <span class="badge badge-sm ${targetBadgeClass}">${targetState.label}</span>
+                </div>
+                <p class="mt-1 text-[10px] leading-4 text-base-content/55">${API.escapeHtml(targetDetail)}</p>
               </div>
 
               <div class="mt-4 grid grid-cols-3 gap-2">
@@ -171,10 +193,7 @@
               <div class="mt-3 text-primary/55">${sparkline(temperatures)}</div>
 
               <div class="mt-3 flex items-center justify-between gap-2 border-t border-base-content/7 pt-3">
-                <div class="flex items-center gap-1.5">
-                  <span class="badge badge-xs ${targetBadgeClass}">${targetState.label}</span>
-                  <span class="badge badge-xs ${healthClass}">${health.label}</span>
-                </div>
+                <span class="badge badge-xs ${healthClass}">${health.label}</span>
                 <span class="text-[10px] text-base-content/40">Seen ${API.timeAgo(node.last_seen)}</span>
               </div>
             </a>

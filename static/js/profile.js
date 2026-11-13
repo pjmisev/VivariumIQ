@@ -5,19 +5,6 @@
     user: null,
   };
 
-  function tokenExpiry(token) {
-    if (!token) return null;
-    try {
-      const payload = token.split(".")[1];
-      const normalized = payload.replaceAll("-", "+").replaceAll("_", "/");
-      const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-      const decoded = JSON.parse(atob(padded));
-      return decoded.exp ? new Date(decoded.exp * 1000).toISOString() : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   function paint() {
     const user = state.user;
     if (!user) return;
@@ -44,33 +31,6 @@
     const email = document.getElementById("profile-email");
     if (username) username.value = user.username;
     if (email) email.value = user.email;
-  }
-
-  function initTokenPanel() {
-    const input = document.getElementById("api-token");
-    const token = API.getToken();
-    if (input) input.value = token || "";
-    const expiry = tokenExpiry(token);
-    document.querySelectorAll("[data-token-expiry]").forEach((element) => {
-      element.textContent = expiry ? API.formatDateTime(expiry) : "—";
-    });
-
-    const reveal = document.querySelector("[data-token-reveal]");
-    if (reveal && input) {
-      reveal.addEventListener("click", () => {
-        const showing = input.type === "text";
-        input.type = showing ? "password" : "text";
-        reveal.setAttribute("aria-label", showing ? "Show token" : "Hide token");
-      });
-    }
-
-    const copy = document.querySelector("[data-token-copy]");
-    if (copy && token) {
-      copy.addEventListener("click", async () => {
-        const ok = await API.copyText(token);
-        API.toast(ok ? "Token copied to the clipboard." : "Could not copy the token.", ok ? "success" : "error");
-      });
-    }
   }
 
   function showError(message) {
@@ -140,7 +100,6 @@
     if (!user) return;
     state.user = user;
     paint();
-    initTokenPanel();
     initProfileForm();
     initDeleteAccount();
   });
