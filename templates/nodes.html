@@ -46,12 +46,12 @@
       {{ icons.icon("search", "h-4 w-4 shrink-0 text-base-content/35") }}
       <input id="node-search" type="search" class="grow text-sm" placeholder="Search by name or location…" aria-label="Search enclosures">
     </label>
-    <div class="flex flex-wrap gap-1 rounded-xl bg-base-200 p-1" role="group" aria-label="Filter enclosures">
-      <button type="button" class="btn btn-primary btn-xs" data-node-filter="all">All</button>
-      <button type="button" class="btn btn-ghost btn-xs" data-node-filter="live">Live</button>
-      <button type="button" class="btn btn-ghost btn-xs" data-node-filter="quiet">Quiet</button>
-      <button type="button" class="btn btn-ghost btn-xs" data-node-filter="target">In target</button>
-      <button type="button" class="btn btn-ghost btn-xs" data-node-filter="attention">Attention</button>
+    <div class="detail-tabs detail-tabs-sm scrollbar-slim" role="tablist" aria-label="Filter enclosures">
+      <button type="button" class="detail-tab is-active" role="tab" aria-selected="true" data-node-filter="all">All</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-node-filter="live">Live</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-node-filter="quiet">Quiet</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-node-filter="target">In target</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-node-filter="attention">Attention</button>
     </div>
   </div>
 
@@ -143,6 +143,6 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{{ url_for('static', path='js/targets.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/nodes.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/targets.js') }}?v={{ asset_version }}" defer></script>
+<script src="{{ url_for('static', path='js/nodes.js') }}?v={{ asset_version }}" defer></script>
 {% endblock %}

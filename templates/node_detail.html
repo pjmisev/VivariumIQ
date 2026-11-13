@@ -115,11 +115,53 @@
       </div>
     </div>
 
-    <div class="mt-6 flex gap-1 overflow-x-auto rounded-xl bg-base-100 p-1" role="tablist" aria-label="Enclosure views">
-      <button type="button" class="tab tab-active" role="tab" aria-selected="true" data-tab-target="overview">Overview</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-tab-target="history">History</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-tab-target="diagnostics">Diagnostics</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-tab-target="alerts">Alerts</button>
+    <style>
+      #enclosure-view-tabs {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.3rem !important;
+        padding: 0.3rem !important;
+        overflow-x: auto !important;
+        border: 1px solid color-mix(in oklch, var(--color-base-content) 12%, transparent) !important;
+        border-radius: 0.9rem !important;
+        background: color-mix(in oklch, var(--color-base-content) 7%, var(--color-base-100)) !important;
+      }
+      #enclosure-view-tabs .detail-tab {
+        flex: 1 0 auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 2.35rem !important;
+        padding: 0.45rem 1rem !important;
+        border: 1px solid transparent !important;
+        border-radius: 0.7rem !important;
+        background: transparent !important;
+        color: color-mix(in oklch, var(--color-base-content) 60%, transparent) !important;
+        font-family: var(--font-body) !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        white-space: nowrap !important;
+        cursor: pointer !important;
+        transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease !important;
+      }
+      #enclosure-view-tabs .detail-tab:hover {
+        background: color-mix(in oklch, var(--color-base-content) 8%, transparent) !important;
+        color: var(--color-base-content) !important;
+      }
+      #enclosure-view-tabs .detail-tab.is-active {
+        background: color-mix(in oklch, var(--color-primary) 14%, var(--color-base-100)) !important;
+        border-color: color-mix(in oklch, var(--color-primary) 28%, transparent) !important;
+        color: var(--color-primary) !important;
+        box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 10%, transparent) !important;
+      }
+    </style>
+
+    <div id="enclosure-view-tabs" class="detail-tabs scrollbar-slim mt-6" role="tablist" aria-label="Enclosure views">
+      <button type="button" class="detail-tab is-active" role="tab" aria-selected="true" data-tab-target="overview">Overview</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-tab-target="history">History</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-tab-target="diagnostics">Diagnostics</button>
+      <button type="button" class="detail-tab" role="tab" aria-selected="false" data-tab-target="alerts">Alerts</button>
     </div>
 
     <div data-tab-panel="overview" class="mt-4">
@@ -382,6 +424,6 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{{ url_for('static', path='js/targets.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/node-detail.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/targets.js') }}?v={{ asset_version }}" defer></script>
+<script src="{{ url_for('static', path='js/node-detail.js') }}?v={{ asset_version }}" defer></script>
 {% endblock %}

@@ -22,7 +22,7 @@
     <!-- Vendored: daisyUI 5.8.0 + @tailwindcss/browser 4.3.5 -->
     <link href="{{ url_for('static', path='vendor/daisyui.css') }}" rel="stylesheet" type="text/css">
     <script src="{{ url_for('static', path='vendor/tailwind-browser.js') }}"></script>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/main.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/main.css') }}?v={{ asset_version }}">
 
     <link rel="icon" href="{{ url_for('static', path='icons/favicon.ico') }}" sizes="any">
     <link rel="icon" href="{{ url_for('static', path='icons/vivariumiq_favicon_32.png') }}" type="image/png" sizes="32x32">
@@ -129,7 +129,7 @@
 
     <div class="toast-root" id="toast-root" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="{{ url_for('static', path='js/site.js') }}" defer></script>
+    <script src="{{ url_for('static', path='js/site.js') }}?v={{ asset_version }}" defer></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

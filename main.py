@@ -55,12 +55,16 @@ app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["asset_version"] = "2026-11-13-3"
 
 
 @app.middleware("http")
 async def demo_mode_middleware(request: Request, call_next):
     request.state.demo_mode = is_demo_token(request.cookies.get(DEMO_COOKIE_NAME))
-    return await call_next(request)
+    response = await call_next(request)
+    if request.method == "GET" and not request.url.path.startswith(("/api", "/static", "/docs", "/openapi")):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/demo", include_in_schema=False, name="demo")

@@ -218,5 +218,5 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{{ url_for('static', path='js/dashboard.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/dashboard.js') }}?v={{ asset_version }}" defer></script>
 {% endblock %}

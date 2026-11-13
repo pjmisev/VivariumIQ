@@ -653,7 +653,7 @@
   function activateTab(name) {
     document.querySelectorAll("[data-tab-target]").forEach((button) => {
       const active = button.getAttribute("data-tab-target") === name;
-      button.classList.toggle("tab-active", active);
+      button.classList.toggle("is-active", active);
       button.setAttribute("aria-selected", String(active));
     });
     document.querySelectorAll("[data-tab-panel]").forEach((panel) => {

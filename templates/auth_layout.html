@@ -86,6 +86,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/api.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/auth.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/api.js') }}?v={{ asset_version }}" defer></script>
+<script src="{{ url_for('static', path='js/auth.js') }}?v={{ asset_version }}" defer></script>
 {% endblock %}

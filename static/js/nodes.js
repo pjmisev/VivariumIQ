@@ -335,7 +335,8 @@
         state.filter = button.getAttribute("data-node-filter");
         document.querySelectorAll("[data-node-filter]").forEach((other) => {
           const active = other === button;
-          other.className = `btn btn-xs ${active ? "btn-primary" : "btn-ghost"}`;
+          other.classList.toggle("is-active", active);
+          other.setAttribute("aria-selected", String(active));
         });
         render();
       });
