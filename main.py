@@ -1,10 +1,12 @@
+import hmac
+import os
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, func
@@ -13,9 +15,31 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import models
 from database import Base, engine, get_db
-from auth import create_access_token, get_current_user, hash_password, require_self, verify_password
+from auth import create_access_token, create_demo_token, is_demo_token, get_current_user, hash_password, require_self, verify_password, DEMO_COOKIE_NAME, DEMO_TOKEN_EXPIRE_HOURS
 from mqtt_listener import start_mqtt_listener, stop_mqtt_listener
-from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+from species_presets import PRESETS_BY_KEY, SPECIES_PRESETS, get_preset_groups
+from schemas import AlertCreate, AlertResponse, AlertUpdate, DiagnosticCreate, DiagnosticResponse, DiagnosticUpdate, DailySummaryResponse ,FavouriteCreate, FavouriteResponse, HourlySummaryResponse,NodeCreate, NodeDiagnosticCreate, NodeReadingCreate, NodeResponse, NodeTargetsInput, NodeTargetsResponse, NodeUpdate, ReadingCreate, ReadingResponse, ReadingUpdate, SpeciesPresetResponse, TokenResponse, UserCreate, UserLogin, UserResponse, UserUpdate
+
+TARGET_RANGE_FIELDS = (
+    "temperature_min", "temperature_max",
+    "humidity_min", "humidity_max",
+    "pressure_min", "pressure_max",
+)
+
+
+def _resolve_target_values(payload: NodeTargetsInput, existing: models.NodeTarget | None = None) -> dict:
+    preset = PRESETS_BY_KEY.get(payload.preset_key) if payload.preset_key else None
+    values: dict = {}
+    for field in TARGET_RANGE_FIELDS:
+        value = getattr(payload, field)
+        if value is None:
+            if preset is not None:
+                value = preset[field]
+            elif existing is not None:
+                value = getattr(existing, field)
+        values[field] = value
+    values["preset_key"] = payload.preset_key
+    return values
 
 Base.metadata.create_all(bind=engine)
 
@@ -33,9 +57,108 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
+@app.middleware("http")
+async def demo_mode_middleware(request: Request, call_next):
+    request.state.demo_mode = is_demo_token(request.cookies.get(DEMO_COOKIE_NAME))
+    return await call_next(request)
+
+
+@app.get("/demo", include_in_schema=False, name="demo")
+def demo(request: Request, key: str | None = None):
+    expected = os.getenv("DEMO_MODE_KEY", "").strip()
+    if not expected or not key or not hmac.compare_digest(key, expected):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    response = RedirectResponse("/app", status_code=303)
+    response.set_cookie(
+        DEMO_COOKIE_NAME,
+        create_demo_token(),
+        max_age=DEMO_TOKEN_EXPIRE_HOURS * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=(request.url.scheme == "https"),
+        path="/",
+    )
+    return response
+
+
+@app.get("/demo/exit", include_in_schema=False, name="demo_exit")
+def demo_exit():
+    response = RedirectResponse("/", status_code=303)
+    response.delete_cookie(DEMO_COOKIE_NAME, path="/")
+    return response
+
+
 @app.get("/", include_in_schema=False, name="home")
 def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {"title": "VivariumIQ"})
+    return templates.TemplateResponse(request, "landing.html", {"title": "Enclosure intelligence"})
+
+
+@app.get("/login", include_in_schema=False, name="login")
+def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"title": "Welcome back"})
+
+
+@app.get("/register", include_in_schema=False, name="register")
+def register_page(request: Request):
+    return templates.TemplateResponse(request, "register.html", {"title": "Create your account"})
+
+
+@app.get("/app", include_in_schema=False, name="dashboard")
+def dashboard_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {"title": "Overview", "page": "dashboard", "active": "dashboard"},
+    )
+
+
+@app.get("/app/nodes", include_in_schema=False, name="nodes")
+def nodes_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "nodes.html",
+        {
+            "title": "Enclosures",
+            "page": "nodes",
+            "active": "nodes",
+            "presets": SPECIES_PRESETS,
+            "preset_groups": get_preset_groups(),
+        },
+    )
+
+
+@app.get("/app/nodes/{node_id}", include_in_schema=False, name="node_detail")
+def node_detail_page(request: Request, node_id: int):
+    return templates.TemplateResponse(
+        request,
+        "node_detail.html",
+        {
+            "title": "Enclosure",
+            "page": "node-detail",
+            "active": "nodes",
+            "node_id": node_id,
+            "presets": SPECIES_PRESETS,
+            "preset_groups": get_preset_groups(),
+        },
+    )
+
+
+@app.get("/app/alerts", include_in_schema=False, name="alerts")
+def alerts_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "alerts.html",
+        {"title": "Alerts", "page": "alerts", "active": "alerts"},
+    )
+
+
+@app.get("/app/profile", include_in_schema=False, name="profile")
+def profile_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "profile.html",
+        {"title": "Profile", "page": "profile", "active": "profile"},
+    )
 
 
 @app.get("/api/nodes", response_model=list[NodeResponse])
@@ -54,6 +177,12 @@ def create_node(node: NodeCreate, current_user: Annotated[models.User, Depends(g
         location_name=node.location_name,
     )
     db.add(new_node)
+    db.flush()
+    if node.targets is not None:
+        db.add(models.NodeTarget(
+            node_id=new_node.node_id,
+            **_resolve_target_values(node.targets),
+        ))
     db.commit()
     db.refresh(new_node)
     return new_node
@@ -90,8 +219,55 @@ def delete_node(node_id: int, current_user: Annotated[models.User, Depends(get_c
         raise HTTPException(status_code=404, detail="Node not found")
     if node.user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="Not allowed to modify this node")
+    if node.targets is not None:
+        db.delete(node.targets)
+        db.flush()
     db.delete(node)
     db.commit()
+
+@app.get("/api/species-presets", response_model=list[SpeciesPresetResponse])
+def get_species_presets():
+    return SPECIES_PRESETS
+
+@app.get("/api/node/{node_id}/targets", response_model=NodeTargetsResponse)
+def get_node_targets(node_id: int, db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.targets is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node targets not found")
+    return node.targets
+
+@app.put("/api/node/{node_id}/targets", response_model=NodeTargetsResponse)
+def set_node_targets(node_id: int, targets: NodeTargetsInput, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this node")
+    values = _resolve_target_values(targets, existing=node.targets)
+    if node.targets is None:
+        node.targets = models.NodeTarget(node_id=node_id, **values)
+    else:
+        for field, value in values.items():
+            setattr(node.targets, field, value)
+    db.commit()
+    db.refresh(node.targets)
+    return node.targets
+
+@app.delete("/api/node/{node_id}/targets", status_code=status.HTTP_204_NO_CONTENT)
+def delete_node_targets(node_id: int, current_user: Annotated[models.User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    result = db.execute(select(models.Node).where(models.Node.node_id == node_id))
+    node = result.scalars().first()
+    if not node:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Node not found")
+    if node.user_id != current_user.user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to modify this node")
+    if node.targets is not None:
+        db.delete(node.targets)
+        db.commit()
 
 @app.post("/api/user", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
@@ -198,9 +374,27 @@ def validation_exception_handler(request: Request, exception: RequestValidationE
     )
 
 @app.get("/api/diagnostics", response_model=list[DiagnosticResponse])
-def get_diagnostics(db: Annotated[Session, Depends(get_db)]):
-    diagnostics = db.scalars(select(models.NodeDiagnostic)).all()
-    return diagnostics
+def get_diagnostics(
+    db: Annotated[Session, Depends(get_db)],
+    node_id: int | None = None,
+    user_id: int | None = None,
+    limit: int | None = Query(default=None, ge=1, le=5000),
+):
+    query = select(models.NodeDiagnostic)
+    if node_id is not None:
+        query = query.where(models.NodeDiagnostic.node_id == node_id)
+    if user_id is not None:
+        query = query.join(
+            models.Node, models.NodeDiagnostic.node_id == models.Node.node_id
+        ).where(models.Node.user_id == user_id)
+    query = query.order_by(
+        models.NodeDiagnostic.recorded_at.desc(),
+        models.NodeDiagnostic.diagnostic_id.desc(),
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    result = db.execute(query)
+    return result.scalars().all()
 
 @app.post("/api/diagnostics", response_model=DiagnosticResponse, status_code=status.HTTP_201_CREATED)
 def create_diagnostic(diagnostic: DiagnosticCreate, db: Annotated[Session, Depends(get_db)]):
@@ -312,8 +506,26 @@ def node_heartbeat(node_id: int, current_user: Annotated[models.User, Depends(ge
     return node
 
 @app.get("/api/readings", response_model=list[ReadingResponse])
-def get_readings(db: Annotated[Session, Depends(get_db)]):
-    result = db.execute(select(models.WeatherReading))
+def get_readings(
+    db: Annotated[Session, Depends(get_db)],
+    node_id: int | None = None,
+    user_id: int | None = None,
+    limit: int | None = Query(default=None, ge=1, le=5000),
+):
+    query = select(models.WeatherReading)
+    if node_id is not None:
+        query = query.where(models.WeatherReading.node_id == node_id)
+    if user_id is not None:
+        query = query.join(
+            models.Node, models.WeatherReading.node_id == models.Node.node_id
+        ).where(models.Node.user_id == user_id)
+    query = query.order_by(
+        models.WeatherReading.recorded_at.desc(),
+        models.WeatherReading.reading_id.desc(),
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    result = db.execute(query)
     return result.scalars().all()
 
 @app.get("/api/reading/{reading_id}", response_model=ReadingResponse)

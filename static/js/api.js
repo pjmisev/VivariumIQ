@@ -1,0 +1,376 @@
+(function () {
+  "use strict";
+
+  const TOKEN_KEY = "viq_token";
+  const USER_KEY = "viq_user";
+
+  class ApiError extends Error {
+    constructor(message, status, detail) {
+      super(message);
+      this.name = "ApiError";
+      this.status = status;
+      this.detail = detail;
+    }
+  }
+
+  function isDemo() {
+    return Boolean(document.body && document.body.dataset.demo === "true");
+  }
+
+  function getToken() {
+    try {
+      return localStorage.getItem(TOKEN_KEY);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getStoredUser() {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setSession(token, user) {
+    try {
+      if (!isDemo()) {
+        if (token) localStorage.setItem(TOKEN_KEY, token);
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+      }
+    } catch (_) {}
+    if (window.VIQ && window.VIQ.setAuthVisibility) window.VIQ.setAuthVisibility();
+  }
+
+  function setUser(user) {
+    try {
+      if (!isDemo()) {
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+        else localStorage.removeItem(USER_KEY);
+      }
+    } catch (_) {}
+  }
+
+  function clearSession() {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    } catch (_) {}
+    if (window.VIQ && window.VIQ.setAuthVisibility) window.VIQ.setAuthVisibility();
+  }
+
+  function formatError(payload, fallback) {
+    if (!payload) return fallback || "Something went wrong. Please try again.";
+    if (typeof payload.detail === "string") return payload.detail;
+    if (Array.isArray(payload.detail)) {
+      return payload.detail
+        .map((item) => {
+          const field = Array.isArray(item.loc) ? item.loc.filter((part) => part !== "body").join(".") : "";
+          return field ? `${field}: ${item.msg}` : item.msg;
+        })
+        .join(" · ");
+    }
+    if (typeof payload.message === "string") return payload.message;
+    return fallback || "Something went wrong. Please try again.";
+  }
+
+  const MEASUREMENTS = Object.freeze({
+    temperature: { label: "Temperature", unit: "°C", digits: 1, color: "#527c9f", bg: "rgba(82, 124, 159, 0.12)" },
+    humidity: { label: "Humidity", unit: "%", digits: 0, color: "#84cc16", bg: "rgba(132, 204, 22, 0.1)" },
+    pressure: { label: "Pressure", unit: " hPa", digits: 0, color: "#0ea5e9", bg: "rgba(14, 165, 233, 0.1)" },
+  });
+
+  const TARGET_METRICS = Object.freeze([
+    { key: "temperature", label: "Temperature", short: "Temp", unit: "°C", digits: 1, minKey: "temperature_min", maxKey: "temperature_max" },
+    { key: "humidity", label: "Humidity", short: "Humidity", unit: "%", digits: 0, minKey: "humidity_min", maxKey: "humidity_max" },
+    { key: "pressure", label: "Pressure", short: "Pressure", unit: "hPa", digits: 0, minKey: "pressure_min", maxKey: "pressure_max" },
+  ]);
+
+  function toTargetNumber(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function formatTargetValue(value, digits) {
+    const number = toTargetNumber(value);
+    if (number === null) return "—";
+    const places = Math.max(0, Math.min(6, digits || 0));
+    return number
+      .toFixed(places)
+      .replace(/(\.\d*?)0+$/, "$1")
+      .replace(/\.$/, "");
+  }
+
+  function evaluateTargets(targets, reading) {
+    const metrics = TARGET_METRICS.map((metric) => {
+      const min = targets ? toTargetNumber(targets[metric.minKey]) : null;
+      const max = targets ? toTargetNumber(targets[metric.maxKey]) : null;
+      const value = reading ? toTargetNumber(reading[metric.key]) : null;
+      const configured = min !== null && max !== null;
+      let status;
+      if (!configured) status = "unconfigured";
+      else if (value === null) status = "unknown";
+      else if (value < min) status = "low";
+      else if (value > max) status = "high";
+      else status = "ok";
+      return {
+        key: metric.key,
+        label: metric.label,
+        short: metric.short,
+        unit: metric.unit,
+        digits: metric.digits,
+        min,
+        max,
+        value,
+        status,
+      };
+    });
+
+    const configuredMetrics = metrics.filter((metric) => metric.status !== "unconfigured");
+    const total = configuredMetrics.length;
+    const inRange = configuredMetrics.filter((metric) => metric.status === "ok").length;
+    const out = configuredMetrics.filter((metric) => metric.status === "low" || metric.status === "high").length;
+
+    if (!total) {
+      return { configured: false, tone: "unconfigured", label: "No targets", inRange: 0, total: 0, out: 0, metrics };
+    }
+    if (out > 0) {
+      return { configured: true, tone: "warning", label: `${out} out of range`, inRange, total, out, metrics };
+    }
+    if (inRange === total) {
+      return { configured: true, tone: "success", label: "In target", inRange, total, out: 0, metrics };
+    }
+    return { configured: true, tone: "warning", label: "Waiting for data", inRange, total, out: 0, metrics };
+  }
+
+  function targetRangeLabel(metric) {
+    if (!metric) return "No range";
+    const min = toTargetNumber(metric.min);
+    const max = toTargetNumber(metric.max);
+    if (min === null || max === null) return "No range";
+    const digits = metric.digits === undefined ? 0 : metric.digits;
+    return `${formatTargetValue(min, digits)}–${formatTargetValue(max, digits)} ${metric.unit}`;
+  }
+
+  function targetDetail(targets, evaluation) {
+    if (!evaluation || !evaluation.configured) {
+      return "No target ranges set yet.";
+    }
+    const out = evaluation.metrics.find((metric) => metric.status === "low" || metric.status === "high");
+    if (out) {
+      const direction = out.status === "low" ? "below" : "above";
+      return `${out.label} ${formatTargetValue(out.value, out.digits)}${out.unit} is ${direction} the ${targetRangeLabel(out)} target.`;
+    }
+    const missing = evaluation.metrics.find((metric) => metric.status === "unknown");
+    if (missing) return `Waiting for a complete ${missing.label.toLowerCase()} reading.`;
+    const label = targets && targets.preset_name ? targets.preset_name : "Custom targets";
+    return `${label} · all ${evaluation.total} tracked metrics in range.`;
+  }
+
+  function evaluateAlert(alert, reading) {
+    if (!alert || !alert.enabled || !reading) return false;
+    const rawValue = reading[alert.measurement_type];
+    if (rawValue === null || rawValue === undefined || rawValue === "") return false;
+    const value = Number(rawValue);
+    const threshold = Number(alert.threshold_value);
+    if (!Number.isFinite(value) || !Number.isFinite(threshold)) return false;
+    switch (alert.comparison_operator) {
+      case ">": return value > threshold;
+      case "<": return value < threshold;
+      case ">=": return value >= threshold;
+      case "<=": return value <= threshold;
+      case "==": return Math.abs(value - threshold) < 0.001;
+      default: return false;
+    }
+  }
+
+  async function request(path, options) {
+    const config = options || {};
+    if (isDemo() && window.DemoMode) {
+      return window.DemoMode.request(path, config);
+    }
+    const method = config.method || "GET";
+    const auth = config.auth !== false;
+    const headers = Object.assign({ Accept: "application/json" }, config.headers || {});
+
+    const token = getToken();
+    if (auth && token) headers.Authorization = `Bearer ${token}`;
+
+    const fetchOptions = { method, headers };
+    if (config.body !== undefined && config.body !== null) {
+      headers["Content-Type"] = "application/json";
+      fetchOptions.body = JSON.stringify(config.body);
+    }
+
+    let response;
+    try {
+      response = await fetch(path, fetchOptions);
+    } catch (_) {
+      throw new ApiError("Cannot reach the server. Check your connection and try again.", 0, null);
+    }
+
+    if (response.status === 401 && auth) {
+      clearSession();
+      const onAuthPage = /^\/(login|register)\/?$/.test(window.location.pathname);
+      if (!onAuthPage) {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.replace(`/login?next=${next}`);
+      }
+      throw new ApiError("Your session has expired. Please log in again.", 401, null);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    let payload = null;
+    if (response.status !== 204 && contentType.includes("application/json")) {
+      payload = await response.json().catch(() => null);
+    }
+
+    if (!response.ok) {
+      throw new ApiError(formatError(payload, response.statusText), response.status, payload);
+    }
+
+    return payload;
+  }
+
+  function parseDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value !== "string") return new Date(value);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+    return new Date(hasZone ? value : `${value}Z`);
+  }
+
+  function formatNumber(value, digits) {
+    if (value === null || value === undefined || value === "") return "—";
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "—";
+    return number.toLocaleString(undefined, {
+      minimumFractionDigits: digits === undefined ? 1 : digits,
+      maximumFractionDigits: digits === undefined ? 1 : digits,
+    });
+  }
+
+  function formatInteger(value) {
+    return formatNumber(value, 0);
+  }
+
+  function formatDateTime(value) {
+    const date = parseDate(value);
+    if (!date || Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString(undefined, {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function formatDate(value) {
+    const date = parseDate(value);
+    if (!date || Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function formatTime(value) {
+    const date = parseDate(value);
+    if (!date || Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function timeAgo(value) {
+    const date = parseDate(value);
+    if (!date || Number.isNaN(date.getTime())) return "never";
+    const seconds = Math.round((Date.now() - date.getTime()) / 1000);
+    if (seconds < 45) return "just now";
+    if (seconds < 90) return "1 min ago";
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+    return formatDate(value);
+  }
+
+  function statusMeta(status) {
+    const value = (status || "inactive").toLowerCase();
+    if (value === "active" || value === "online" || value === "live") {
+      return { label: "Live", tone: "success", dot: "bg-success", badge: "badge-success" };
+    }
+    if (value === "offline" || value === "error") {
+      return { label: "Offline", tone: "error", dot: "bg-error", badge: "badge-error" };
+    }
+    return { label: "Idle", tone: "warning", dot: "bg-warning", badge: "badge-warning" };
+  }
+
+  function initials(value) {
+    const parts = String(value || "VQ").trim().split(/\s+/).slice(0, 2);
+    return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "VQ";
+  }
+
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function setButtonLoading(button, loading, label) {
+    if (!button) return;
+    if (loading) {
+      if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = `<span class="loading loading-spinner loading-sm"></span><span>${escapeHtml(label || "Working…")}</span>`;
+    } else {
+      button.disabled = false;
+      if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
+    }
+  }
+
+  function toast(message, type) {
+    if (window.VIQ && window.VIQ.toast) window.VIQ.toast(message, type);
+    else if (type === "error") console.error(message);
+    else console.info(message);
+  }
+
+  window.API = {
+    TOKEN_KEY,
+    USER_KEY,
+    ApiError,
+    MEASUREMENTS,
+    TARGET_METRICS,
+    evaluateAlert,
+    evaluateTargets,
+    targetRangeLabel,
+    targetDetail,
+    request,
+    isDemo,
+    getToken,
+    getStoredUser,
+    setSession,
+    setUser,
+    clearSession,
+    formatError,
+    parseDate,
+    formatNumber,
+    formatInteger,
+    formatDateTime,
+    formatDate,
+    formatTime,
+    timeAgo,
+    statusMeta,
+    initials,
+    escapeHtml,
+    setButtonLoading,
+    toast,
+  };
+})();
