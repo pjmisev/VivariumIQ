@@ -34,6 +34,7 @@ services:
       FORWARDED_ALLOW_IPS: "*"
       DATABASE_URL: mysql+pymysql://vivariumiq:${MARIADB_PASSWORD:-vivariumiq}@db:3306/vivariumiq_db
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      DEMO_MODE_KEY: ${DEMO_MODE_KEY:-}
       MQTT_BROKER: mqtt
       MQTT_PORT: 1883
       MQTT_TLS: "false"
