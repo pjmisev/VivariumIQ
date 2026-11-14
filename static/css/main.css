@@ -299,6 +299,13 @@ textarea {
   color: color-mix(in oklch, var(--color-base-content) 45%, transparent);
 }
 
+/* This stylesheet is unlayered, so its `display: flex` above would beat
+   Tailwind's layered `.hidden` utility and leave the placeholder permanently
+   visible. A higher-specificity rule restores the hide when JS adds `hidden`. */
+.chart-empty.hidden {
+  display: none;
+}
+
 /* ---------- Auth ---------- */
 
 .auth-brand-panel {
